@@ -40,8 +40,8 @@ FROM os AS build
 # limit cpus so don't run out of memory on local machine
 # symptom: get error - "c++: fatal error: Killed signal terminated program cc1plus"
 # can turn off if building in cloud
-ARG CONAN_CPU_COUNT=2
-ARG WITH_RUBY='True'
+# ARG CONAN_CPU_COUNT=2
+ARG WITH_RUBY='False'
 
 # set some variables
 ENV PATH="$HOME/venv3.9/bin:$PATH"
