@@ -35,7 +35,7 @@ FROM alpine:3.19 AS os
 # build
 # ---------------------------------------------------------------------
 
-FROM python:alpine3.19 AS build
+FROM os AS build
 
 # limit cpus so don't run out of memory on local machine
 # symptom: get error - "c++: fatal error: Killed signal terminated program cc1plus"
