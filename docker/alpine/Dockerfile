@@ -83,10 +83,11 @@ RUN  if [ -z "$WITH_TESTS" ] || [ "$WITH_TESTS" = "false" ]; then \
        WITH_TESTS_ARG=""; \
      fi \
   && . /python/conan/bin/activate \
+  && conan install . --update \
   && conan profile detect \
   && conan create cppagent \
        --build=missing \
-       -c "tools.build:jobs=$CONAN_CPU_COUNT" \
+    #    -c "tools.build:jobs=$CONAN_CPU_COUNT" \
        -o agent_prefix=mtc \
        -o cpack=True \
        -o "with_ruby=$WITH_RUBY" \
