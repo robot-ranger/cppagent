@@ -35,7 +35,7 @@ FROM alpine:3.19 AS os
 # build
 # ---------------------------------------------------------------------
 
-FROM os AS build
+FROM python:alpine3.19 AS build
 
 # limit cpus so don't run out of memory on local machine
 # symptom: get error - "c++: fatal error: Killed signal terminated program cc1plus"
@@ -63,8 +63,8 @@ RUN  apk --update add \
        python3 \
        ruby \
        ruby-rake \
-    # && python3 -m venv /python/conan \
-    # && . /python/conan/bin/activate \
+    && python3 -m venv /python/conan \
+    && . /python/conan/bin/activate \
     && PIP_ROOT_USER_ACTION='ignore' pip install conan
 
 # make an agent directory and cd into it
@@ -82,8 +82,7 @@ RUN  if [ -z "$WITH_TESTS" ] || [ "$WITH_TESTS" = "false" ]; then \
      else \
        WITH_TESTS_ARG=""; \
      fi \
-#   && . /python/conan/bin/activate \
-  && conan install . --update \
+  && . /python/conan/bin/activate \
   && conan profile detect \
   && conan create cppagent \
        --build=missing \
