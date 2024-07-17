@@ -63,8 +63,8 @@ RUN  apk --update add \
        python3 \
        ruby \
        ruby-rake \
-    && python3 -m venv /python/conan \
-    && . /python/conan/bin/activate \
+    # && python3 -m venv /python/conan \
+    # && . /python/conan/bin/activate \
     && PIP_ROOT_USER_ACTION='ignore' pip install conan
 
 # make an agent directory and cd into it
@@ -82,7 +82,7 @@ RUN  if [ -z "$WITH_TESTS" ] || [ "$WITH_TESTS" = "false" ]; then \
      else \
        WITH_TESTS_ARG=""; \
      fi \
-  && . /python/conan/bin/activate \
+#   && . /python/conan/bin/activate \
   && conan install . --update \
   && conan profile detect \
   && conan create cppagent \
