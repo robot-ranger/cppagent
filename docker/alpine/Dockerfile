@@ -67,6 +67,8 @@ RUN  apk --update add \
     && . /python/conan/bin/activate \
     && PIP_ROOT_USER_ACTION='ignore' pip install conan
 
+RUN apk info -vv | less
+
 # make an agent directory and cd into it
 WORKDIR /root/agent
 
