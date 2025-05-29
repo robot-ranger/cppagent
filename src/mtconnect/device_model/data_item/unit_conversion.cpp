@@ -1,5 +1,5 @@
 //
-// Copyright Copyright 2009-2022, AMT – The Association For Manufacturing Technology (“AMT”)
+// Copyright Copyright 2009-2024, AMT – The Association For Manufacturing Technology (“AMT”)
 // All rights reserved.
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
@@ -171,17 +171,31 @@ namespace mtconnect::device_model::data_item {
 
       factor = sscale / tscale;
 
-      key = source;
-      key = key.append("-").append(target);
+      vector<string> sunits;
+      boost::split(sunits, source, boost::is_any_of("_"));
 
-      const auto &conversion = m_conversions.find(string(key));
-      // Check for no support units and not power or factor scaling.
-      if (conversion == m_conversions.end() && factor == 1.0)
-        return nullptr;
-      else if (conversion != m_conversions.end())
+      vector<string> tunits;
+      boost::split(tunits, target, boost::is_any_of("_"));
+
+      if (sunits.size() == tunits.size())
       {
-        factor *= conversion->second.factor();
-        offset = conversion->second.offset();
+        for (auto si = sunits.begin(), ti = tunits.begin();
+             si != sunits.end() && ti != tunits.end(); si++, ti++)
+        {
+          key = *si;
+          key = key.append("-").append(*ti);
+
+          const auto &conversion = m_conversions.find(string(key));
+
+          // Check for no support units and not power or factor scaling.
+          if (conversion == m_conversions.end() && factor == 1.0)
+            return nullptr;
+          else if (conversion != m_conversions.end())
+          {
+            factor *= conversion->second.factor();
+            offset = conversion->second.offset();
+          }
+        }
       }
 
       if (tpower != 1.0)

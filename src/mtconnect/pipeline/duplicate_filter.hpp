@@ -1,5 +1,5 @@
 //
-// Copyright Copyright 2009-2022, AMT – The Association For Manufacturing Technology (“AMT”)
+// Copyright Copyright 2009-2024, AMT – The Association For Manufacturing Technology (“AMT”)
 // All rights reserved.
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,12 +25,6 @@ namespace mtconnect::pipeline {
   class AGENT_LIB_API DuplicateFilter : public Transform
   {
   public:
-    /// @brief Shared states to check for duplicates
-    struct State : TransformState
-    {
-      std::unordered_map<std::string, entity::Value> m_values;
-    };
-
     DuplicateFilter(const DuplicateFilter &) = default;
     /// @brief Create a duplicate filter with shared state from the context
     /// @param context the context

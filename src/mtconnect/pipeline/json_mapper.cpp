@@ -1,4 +1,4 @@
-// Copyright Copyright 2009-2022, AMT – The Association For Manufacturing Technology (“AMT”)
+// Copyright Copyright 2009-2024, AMT – The Association For Manufacturing Technology (“AMT”)
 // All rights reserved.
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
@@ -134,14 +134,19 @@ namespace mtconnect::pipeline {
           {
             LOG(warning) << "Error while parsing json: " << e->what();
           }
+          
+          props.clear();
+          props["VALUE"] = "UNAVAILABLE"s;
+          if (m_pipelineContext->m_contract->isValidating())
+            props["quality"] = "INVALID"s;
+          
+          obs = observation::Observation::make(dataItem, props, *m_timestamp, errors);
         }
-        else
-        {
-          if (m_source)
-            dataItem->setDataSource(*m_source);
-          m_entities.push_back(obs);
-          m_forward(std::move(obs));
-        }
+
+        if (m_source)
+          dataItem->setDataSource(*m_source);
+        m_entities.push_back(obs);
+        m_forward(std::move(obs));
       }
     }
 

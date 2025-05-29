@@ -1,5 +1,5 @@
 //
-// Copyright Copyright 2009-2022, AMT – The Association For Manufacturing Technology (“AMT”)
+// Copyright Copyright 2009-2024, AMT – The Association For Manufacturing Technology (“AMT”)
 // All rights reserved.
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
@@ -67,6 +67,7 @@ public:
   void sourceFailed(const std::string &id) override {}
   const ObservationPtr checkDuplicate(const ObservationPtr &obs) const override { return obs; }
   int32_t getSchemaVersion() const override { return SCHEMA_VERSION(2, 3); };
+  bool isValidating() const override { return false; }
 
   std::map<string, DataItemPtr> &m_dataItems;
   std::map<string, DevicePtr> &m_devices;
@@ -106,7 +107,7 @@ protected:
       cerr << "Errors occurred during make data item" << endl;
       for (auto &e : errors)
       {
-        cerr << "    " << e->getEntity() << ": "  << e->what() << endl;
+        cerr << "    " << e->getEntity() << ": " << e->what() << endl;
       }
       return nullptr;
     }
@@ -1063,7 +1064,7 @@ TEST_F(JsonMappingTest, should_skip_erroneous_array)
   auto dev = makeDevice("Device", {{"id", "device"s}, {"name", "device"s}, {"uuid", "device"s}});
   makeDataItem("device", {{"id", "a"s}, {"type", "EXECUTION"s}, {"category", "EVENT"s}});
   makeDataItem("device", {{"id", "b"s}, {"type", "CONTROLLER_MODE"s}, {"category", "EVENT"s}});
-  
+
   Properties props {{"VALUE", R"(
 {
   "timestamp": "2023-11-09T11:20:00Z",
@@ -1079,18 +1080,18 @@ TEST_F(JsonMappingTest, should_skip_erroneous_array)
     },
    "b": "MANUAL"
 })"s}};
-  
+
   auto jmsg = std::make_shared<JsonMessage>("JsonMessage", props);
   jmsg->m_device = dev;
-  
+
   auto res = (*m_mapper)(std::move(jmsg));
   ASSERT_TRUE(res);
-  
+
   auto value = res->getValue();
   ASSERT_TRUE(std::holds_alternative<EntityList>(value));
   auto list = get<EntityList>(value);
   ASSERT_EQ(1, list.size());
-  
+
   auto obs = dynamic_pointer_cast<Observation>(list.front());
   ASSERT_TRUE(obs);
   ASSERT_EQ("ControllerMode", obs->getName());
@@ -1104,7 +1105,7 @@ TEST_F(JsonMappingTest, should_skip_erroneous_table)
   auto dev = makeDevice("Device", {{"id", "device"s}, {"name", "device"s}, {"uuid", "device"s}});
   makeDataItem("device", {{"id", "a"s}, {"type", "EXECUTION"s}, {"category", "EVENT"s}});
   makeDataItem("device", {{"id", "b"s}, {"type", "CONTROLLER_MODE"s}, {"category", "EVENT"s}});
-  
+
   Properties props {{"VALUE", R"(
 {
   "timestamp": "2023-11-09T11:20:00Z",
@@ -1128,18 +1129,18 @@ TEST_F(JsonMappingTest, should_skip_erroneous_table)
     },
    "b": "MANUAL"
 })"s}};
-  
+
   auto jmsg = std::make_shared<JsonMessage>("JsonMessage", props);
   jmsg->m_device = dev;
-  
+
   auto res = (*m_mapper)(std::move(jmsg));
   ASSERT_TRUE(res);
-  
+
   auto value = res->getValue();
   ASSERT_TRUE(std::holds_alternative<EntityList>(value));
   auto list = get<EntityList>(value);
   ASSERT_EQ(1, list.size());
-  
+
   auto obs = dynamic_pointer_cast<Observation>(list.front());
   ASSERT_TRUE(obs);
   ASSERT_EQ("ControllerMode", obs->getName());

@@ -1,5 +1,5 @@
 //
-// Copyright Copyright 2009-2022, AMT – The Association For Manufacturing Technology (“AMT”)
+// Copyright Copyright 2009-2024, AMT – The Association For Manufacturing Technology (“AMT”)
 // All rights reserved.
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
@@ -135,4 +135,15 @@ TEST(UnitConversionTest, test_volume_and_volume_per_time)
   ///       - Check gallon/minute to liter/second
   conv = UnitConversion::make("GALLON/MINUTE", "LITER/SECOND");
   EXPECT_NEAR(1.0725, conv->convert(17.0), 0.001);
+}
+
+TEST(UnitConversionTest, check_conversion_from_kw_h_to_watt_second)
+{
+  auto conv = UnitConversion::make("KILOWATT/HOUR", "WATT/SECOND");
+  EXPECT_NEAR(0.16666, conv->convert(0.6), 0.001);
+  EXPECT_NEAR(0.25556, conv->convert(0.92), 0.001);
+
+  conv = UnitConversion::make("KILOWATT_HOUR", "WATT_SECOND");
+  EXPECT_NEAR(2160000.0, conv->convert(0.6), 0.001);
+  EXPECT_NEAR(3312000.0, conv->convert(0.92), 0.001);
 }

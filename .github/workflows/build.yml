@@ -153,6 +153,7 @@ jobs:
 
     - name: Cleanse package version
       run: |
+        PACKAGE_VERSION=${{ github.ref_name  }}
         if [[ $PACKAGE_VERSION == v*.*.*.* ]]; then
           echo "PACKAGE_VERSION=${PACKAGE_VERSION:1}" >> $GITHUB_ENV
         elif [[ $PACKAGE_VERSION == [0-9].*.*.* ]]; then
@@ -179,7 +180,7 @@ jobs:
         desc: "MTConnect Agent for Ununtu"
         maintainer: Datanomix <support@datanomix.io>
     - name: Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       if: ${{ startsWith(github.ref, 'refs/tags/') && matrix.shared == 'False' }}
       with:
         name: Version ${{ github.ref_name }}

@@ -1,5 +1,5 @@
 //
-// Copyright Copyright 2009-2022, AMT – The Association For Manufacturing Technology (“AMT”)
+// Copyright Copyright 2009-2024, AMT – The Association For Manufacturing Technology (“AMT”)
 // All rights reserved.
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
@@ -77,16 +77,11 @@ namespace mtconnect {
           GetOption<bool>(adapter->getOptions(), config::SuppressIPAddress).value_or(false);
       auto id = adapter->getIdentity();
 
-      stringstream name;
-      name << adapter->getHost() << ':' << adapter->getPort();
-
       ErrorList errors;
       Properties attrs {{"id", id}};
       if (!suppress)
       {
-        stringstream name;
-        name << adapter->getHost() << ':' << adapter->getPort();
-        attrs["name"] = name.str();
+        attrs["name"] = adapter->getName();
       }
       else
       {

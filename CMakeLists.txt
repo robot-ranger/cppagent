@@ -1,8 +1,8 @@
 # The version number.
 set(AGENT_VERSION_MAJOR 2)
-set(AGENT_VERSION_MINOR 4)
+set(AGENT_VERSION_MINOR 5)
 set(AGENT_VERSION_PATCH 0)
-set(AGENT_VERSION_BUILD 8)
+set(AGENT_VERSION_BUILD 6)
 set(AGENT_VERSION_RC "")
 
 # This minimum version is to support Visual Studio 2019 and C++ feature checking and FetchContent

@@ -44,8 +44,8 @@ FROM os AS build
 ARG WITH_RUBY='False'
 
 # set some variables
-ENV PATH="$HOME/venv3.9/bin:$PATH"
-ENV CONAN_PROFILE='/root/agent/cppagent/conan/profiles/docker'
+ENV HOME='/root'
+ENV CONAN_PROFILE="$HOME/agent/cppagent/conan/profiles/docker"
 
 # update os and add dependencies
 # note: Dockerfiles run as root by default, so don't need sudo
@@ -92,7 +92,7 @@ RUN  if [ -z "$WITH_TESTS" ] || [ "$WITH_TESTS" = "false" ]; then \
        -o agent_prefix=mtc \
        -o cpack=True \
        -o "with_ruby=$WITH_RUBY" \
-       -o cpack_destination=/root/agent \
+       -o "cpack_destination=$HOME/agent" \
        -o cpack_name=dist \
        -o cpack_generator=TGZ \
        -pr "$CONAN_PROFILE" \

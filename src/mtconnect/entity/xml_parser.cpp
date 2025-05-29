@@ -1,5 +1,5 @@
 //
-// Copyright Copyright 2009-2022, AMT – The Association For Manufacturing Technology (“AMT”)
+// Copyright Copyright 2009-2024, AMT – The Association For Manufacturing Technology (“AMT”)
 // All rights reserved.
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,6 +16,9 @@
 //
 
 #include "mtconnect/entity/xml_parser.hpp"
+
+#include <boost/spirit/include/qi_numeric.hpp>
+#include <boost/spirit/include/qi_parse.hpp>
 
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
@@ -86,6 +89,80 @@ namespace mtconnect::entity {
     if (str.tellp() > 0)
       content = str.str();
     return content;
+  }
+
+  template <typename P, typename A>
+  static inline bool isType(const string &str, const P &parser, A &value)
+  {
+    std::string::const_iterator first(str.cbegin()), last(str.cend());
+    return boost::spirit::qi::parse(first, last, parser, value) && first == last;
+  }
+
+  static void parseDataSet(xmlNodePtr node, DataSet &dataSet, bool table, bool cell = false)
+  {
+    for (xmlNodePtr child = node->children; child; child = child->next)
+    {
+      if (child->type == XML_ELEMENT_NODE &&
+          ((!cell && xmlStrcmp(child->name, BAD_CAST "Entry") == 0) ||
+           (cell && xmlStrcmp(child->name, BAD_CAST "Cell") == 0)))
+      {
+        // Get the key for the entry
+        string key;
+        for (xmlAttrPtr attr = child->properties; attr; attr = attr->next)
+        {
+          if (attr->type == XML_ATTRIBUTE_NODE)
+          {
+            string name((const char *)attr->name);
+            if (name != "key")
+            {
+              throw EntityError("parseDataSet: Expecting ksy for data set Entry: " +
+                                string((const char *)node->name));
+            }
+            key = string((const char *)attr->children->content);
+            break;
+          }
+        }
+
+        DataSetValue value;
+        auto valueNode = child->children;
+        if (valueNode)
+        {
+          if (table && !cell)
+          {
+            DataSet &ds = value.emplace<DataSet>();
+            parseDataSet(child, ds, true, true);
+          }
+          else if (valueNode->type == XML_TEXT_NODE)
+          {
+            string text = ((const char *)valueNode->content);
+            trim(text);
+
+            if (int64_t v; isType(text, boost::spirit::long_long, v))
+            {
+              value = v;
+            }
+            else if (double v; isType(text, boost::spirit::double_, v))
+            {
+              value = v;
+            }
+            else
+            {
+              value = text;
+            }
+          }
+          else
+          {
+            LOG(warning) << "Invalid content for data set";
+          }
+        }
+        dataSet.emplace(key, value);
+      }
+      else
+      {
+        throw EntityError("parseDataSet: Expecting Entry for data set: " +
+                          string((const char *)node->name));
+      }
+    }
   }
 
   EntityPtr XmlParser::parseXmlNode(FactoryPtr factory, xmlNodePtr node, ErrorList &errors,
@@ -165,7 +242,12 @@ namespace mtconnect::entity {
               }
             }
 
-            if (simple)
+            if (ef->isDataSet(name))
+            {
+              auto ds = &properties[name].emplace<DataSet>();
+              parseDataSet(child, *ds, ef->isTable(name));
+            }
+            else if (simple)
             {
               if (child->children != nullptr && child->children->content != nullptr)
               {
@@ -258,7 +340,7 @@ namespace mtconnect::entity {
       if (root != nullptr)
         entity = parseXmlNode(factory, root, errors, parseNamespaces);
       else
-        errors.emplace_back(new EntityError("Cannot parse asset"));
+        errors.emplace_back(new EntityError("Cannot parse document"));
     }
 
     catch (EntityError e)

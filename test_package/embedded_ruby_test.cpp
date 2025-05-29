@@ -1,5 +1,5 @@
 //
-// Copyright Copyright 2009-2022, AMT – The Association For Manufacturing Technology (“AMT”)
+// Copyright Copyright 2009-2024, AMT – The Association For Manufacturing Technology (“AMT”)
 // All rights reserved.
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
@@ -92,6 +92,7 @@ namespace {
     void deliverDevice(DevicePtr) override {}
     void deliverAssetCommand(entity::EntityPtr c) override { m_command = c; }
     int32_t getSchemaVersion() const override { return IntDefaultSchemaVersion(); }
+    bool isValidating() const override { return false; }
     void deliverCommand(entity::EntityPtr c) override { m_command = c; }
     void deliverConnectStatus(entity::EntityPtr, const StringList &, bool) override {}
     void sourceFailed(const std::string &id) override {}
