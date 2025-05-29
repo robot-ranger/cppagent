@@ -16,7 +16,7 @@
 name: Build Docker image
 
 env:
-  PLATFORMS: linux/arm64
+  PLATFORMS: linux/amd64,linux/arm64
 
 # when to run workflow
 on:
@@ -40,7 +40,6 @@ jobs:
     strategy:
       max-parallel: 2
       matrix:
-        architecture: [linux/arm64]
         include:
           - dockerfile: docker/alpine/Dockerfile
             name: agent
@@ -80,7 +79,7 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
-          platforms: ${{  matrix.architecture}}
+          platforms: ${{ env.PLATFORMS }}
 
           # docker hub user/repo:tag
           tags: |
