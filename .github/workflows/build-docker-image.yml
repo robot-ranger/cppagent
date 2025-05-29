@@ -34,9 +34,12 @@ jobs:
   build:
     # Do not build if it is an RC build
     if: ${{ ! contains(github.ref_name, 'RC') }}
-    
+    strategy:
+      max-parallel: 2
+      matrix:
+        platform: [ubuntu-22.04-arm, ubuntu-latest]
     # the type of runner that the job will run on
-    runs-on: ubuntu-22.04-arm
+    runs-on: ${{ matrix.platform }}
 #     strategy:
 #       max-parallel: 2
 #       matrix:
@@ -79,7 +82,7 @@ jobs:
         with:
           context: .
           file: docker/alpine/Dockerfile
-          platforms: ${{ env.PLATFORMS }}
+          # platforms: ${{ env.PLATFORMS }}
 
           # docker hub user/repo:tag
           tags: |
