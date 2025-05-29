@@ -83,9 +83,9 @@ jobs:
 
           # docker hub user/repo:tag
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.name }}:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.name }}:${{ env.VERSION }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.name }}:${{ env.MAJOR_VERSION }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/agent:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/agent:${{ env.VERSION }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/agent:${{ env.MAJOR_VERSION }}
 
           # push to docker hub
           push: true
