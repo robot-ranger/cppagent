@@ -32,17 +32,19 @@ on:
 jobs:
   # this workflow contains a single job called "build"
   build:
+    # Do not build if it is an RC build
+    if: ${{ ! contains(github.ref_name, 'RC') }}
+    
     # the type of runner that the job will run on
-    runs-on: ubuntu-latest
-    strategy:
-      max-parallel: 1
-      matrix:
-        architecture: [linux/amd64, linux/arm64]
-        include:
-          - dockerfile: docker/alpine/Dockerfile
-            name: agent
-#          - dockerfile: demo/Dockerfile
-#            name: demo
+    runs-on: ubuntu-22.04-arm
+#     strategy:
+#       max-parallel: 2
+#       matrix:
+#         include:
+#           - dockerfile: docker/alpine/Dockerfile
+#             name: agent
+# #          - dockerfile: demo/Dockerfile
+# #            name: demo
 
     # steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -51,10 +53,10 @@ jobs:
       - name: Checkout Agent
         uses: actions/checkout@v3
 
-      # the QEMU emulator lets us build for arm processors also
-      # see https://github.com/docker/setup-qemu-action
-      - name: Set up QEMU emulator
-        uses: docker/setup-qemu-action@v3
+    #   # the QEMU emulator lets us build for arm processors also
+    #   # see https://github.com/docker/setup-qemu-action
+    #   - name: Set up QEMU emulator
+    #     uses: docker/setup-qemu-action@v3
 
       # see https://github.com/docker/setup-buildx-action
       - name: Set up Docker Buildx
@@ -76,8 +78,8 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ${{ matrix.dockerfile }}
-          platforms: ${{ matrix.architecture }}
+          file: docker/alpine/Dockerfile
+          platforms: ${{ env.PLATFORMS }}
 
           # docker hub user/repo:tag
           tags: |
