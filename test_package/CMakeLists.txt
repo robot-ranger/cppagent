@@ -221,6 +221,7 @@ add_agent_test(asset_hash TRUE asset)
 add_agent_test(physical_asset FALSE asset)
 add_agent_test(pallet FALSE asset)
 add_agent_test(fixture FALSE asset)
+add_agent_test(target FALSE asset)
 
 add_agent_test(agent_device TRUE device_model)
 add_agent_test(component FALSE device_model)

@@ -102,6 +102,7 @@ namespace mtconnect {
     ComponentConfigurationParameters::registerAsset();
     Pallet::registerAsset();
     Fixture::registerAsset();
+  
 
     m_assetStorage = make_unique<AssetBuffer>(
         GetOption<int>(options, mtconnect::configuration::MaxAssets).value_or(1024));
