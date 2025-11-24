@@ -569,12 +569,14 @@ namespace mtconnect {
           "count={integer:100}&device={string}&pretty={bool:false}&format={string}");
       m_server->addRouting({boost::beast::http::verb::get, "/assets?" + qp, handler})
           .document("MTConnect assets request", "Returns up to `count` assets");
+      m_server->addRouting({boost::beast::http::verb::get, "/{device}/assets?" + qp, handler})
+          .document("MTConnect assets request", "Returns up to `count` assets for deivce `device`")
+          .command("assets");
       m_server->addRouting({boost::beast::http::verb::get, "/asset?" + qp, handler})
           .document("MTConnect asset request", "Returns up to `count` assets");
-      m_server->addRouting({boost::beast::http::verb::get, "/{device}/assets?" + qp, handler})
-          .document("MTConnect assets request", "Returns up to `count` assets for deivce `device`");
       m_server->addRouting({boost::beast::http::verb::get, "/{device}/asset?" + qp, handler})
-          .document("MTConnect asset request", "Returns up to `count` assets for deivce `device`");
+          .document("MTConnect asset request", "Returns up to `count` assets for deivce `device`")
+          .command("asset");
       m_server->addRouting({boost::beast::http::verb::get, "/assets/{assetIds}", idHandler})
           .document(
               "MTConnect assets request",
@@ -582,7 +584,8 @@ namespace mtconnect {
       m_server->addRouting({boost::beast::http::verb::get, "/asset/{assetIds}", idHandler})
           .document("MTConnect asset request",
                     "Returns a set of assets identified by asset ids `asset` separated by "
-                    "semi-colon (;)");
+                    "semi-colon (;)")
+          .command("assetsById");
 
       if (m_server->arePutsAllowed())
       {
@@ -727,8 +730,12 @@ namespace mtconnect {
     void RestService::createSampleRoutings()
     {
       using namespace rest_sink;
+
+
       auto handler = [&](SessionPtr session, RequestPtr request) -> bool {
         request->m_request = "MTConnectStreams";
+
+        if(!request->parameter<int32_t>("count")) request->m_parameters["count"] =100;
 
         auto interval = request->parameter<int32_t>("interval");
         if (interval)
