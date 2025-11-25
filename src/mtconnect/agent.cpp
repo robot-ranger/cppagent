@@ -48,6 +48,7 @@
 #include "mtconnect/asset/file_asset.hpp"
 #include "mtconnect/asset/fixture.hpp"
 #include "mtconnect/asset/pallet.hpp"
+#include "mtconnect/asset/process.hpp"
 #include "mtconnect/asset/qif_document.hpp"
 #include "mtconnect/asset/raw_material.hpp"
 #include "mtconnect/configuration/config_options.hpp"
@@ -102,7 +103,7 @@ namespace mtconnect {
     ComponentConfigurationParameters::registerAsset();
     Pallet::registerAsset();
     Fixture::registerAsset();
-  
+    Process::registerAsset();
 
     m_assetStorage = make_unique<AssetBuffer>(
         GetOption<int>(options, mtconnect::configuration::MaxAssets).value_or(1024));

@@ -53,6 +53,24 @@ namespace mtconnect {
         targets = make_shared<Factory>(entity::Requirements {
           entity::Requirement("TargetDevice", ValueType::ENTITY, TargetDevice::getFactory(), 0, entity::Requirement::Infinite),
           entity::Requirement("TargetGroup", ValueType::ENTITY_LIST, TargetGroup::getFactory(), 0, entity::Requirement::Infinite),
+          entity::Requirement("TargetRef", ValueType::ENTITY, TargetRef::getFactory(), 0, entity::Requirement::Infinite)
+        });
+        
+        targets->registerMatchers();
+        targets->setMinListSize(1);
+      }
+      
+      return targets;
+    }
+    
+    FactoryPtr Target::getAllTargetsFactory()
+    {
+      static FactoryPtr targets;
+      if (!targets)
+      {
+        targets = make_shared<Factory>(entity::Requirements {
+          entity::Requirement("TargetDevice", ValueType::ENTITY, TargetDevice::getFactory(), 0, entity::Requirement::Infinite),
+          entity::Requirement("TargetGroup", ValueType::ENTITY_LIST, TargetGroup::getFactory(), 0, entity::Requirement::Infinite),
           entity::Requirement("TargetRef", ValueType::ENTITY, TargetRef::getFactory(), 0, entity::Requirement::Infinite),
           entity::Requirement("TargetRequirement", ValueType::ENTITY, TargetRequirement::getFactory(), 0, entity::Requirement::Infinite)
         });
@@ -63,6 +81,24 @@ namespace mtconnect {
       
       return targets;
     }
+    
+
+    FactoryPtr Target::getRequirementTargetsFactory()
+    {
+      static FactoryPtr targets;
+      if (!targets)
+      {
+        targets = make_shared<Factory>(entity::Requirements {
+          entity::Requirement("TargetRequirement", ValueType::ENTITY, TargetRequirement::getFactory(), 0, entity::Requirement::Infinite)
+        });
+        
+        targets->registerMatchers();
+        targets->setMinListSize(1);
+      }
+      
+      return targets;
+    }
+
     
     FactoryPtr TargetDevice::getFactory()
     {

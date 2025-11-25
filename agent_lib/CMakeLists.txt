@@ -27,6 +27,7 @@ set(AGENT_SOURCES
         "${SOURCE_DIR}/asset/component_configuration_parameters.hpp"
         "${SOURCE_DIR}/asset/physical_asset.hpp"
         "${SOURCE_DIR}/asset/fixture.hpp"
+        "${SOURCE_DIR}/asset/process.hpp"
         "${SOURCE_DIR}/asset/pallet.hpp"
         "${SOURCE_DIR}/asset/target.hpp"
 
@@ -40,6 +41,7 @@ set(AGENT_SOURCES
         "${SOURCE_DIR}/asset/component_configuration_parameters.cpp"
         "${SOURCE_DIR}/asset/physical_asset.cpp"
         "${SOURCE_DIR}/asset/fixture.cpp"
+        "${SOURCE_DIR}/asset/process.cpp"
         "${SOURCE_DIR}/asset/pallet.cpp"
         "${SOURCE_DIR}/asset/target.cpp"
         

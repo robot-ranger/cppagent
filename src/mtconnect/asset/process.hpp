@@ -21,50 +21,25 @@
 #include <utility>
 #include <vector>
 
-#include "mtconnect/entity/entity.hpp"
+#include "asset.hpp"
 #include "mtconnect/entity/factory.hpp"
 #include "mtconnect/utilities.hpp"
 #include "asset.hpp"
 
 namespace mtconnect::asset {
-  /// @brief A target of a process or a task
-  class AGENT_LIB_API Target : public entity::Entity
+  /// @brief Manufacturing process archetype asset
+  class AGENT_LIB_API ProcessArchetype : public Asset
   {
   public:
     static entity::FactoryPtr getFactory();
-    static entity::FactoryPtr getDeviceTargetsFactory();
-    static entity::FactoryPtr getTargetsFactory();
-    static entity::FactoryPtr getAllTargetsFactory();
-    static entity::FactoryPtr getRequirementTargetsFactory();
+    static void registerAsset();
   };
 
-  /// @brief A group of possible targets
-  class AGENT_LIB_API TargetGroup : public Target
+  /// @brief Manufacturing process asset
+  class AGENT_LIB_API Process : public Asset
   {
   public:
     static entity::FactoryPtr getFactory();
+    static void registerAsset();
   };
-
-  /// @brief A device target where the `targetId` is the device UUID
-  class AGENT_LIB_API TargetDevice : public Target
-  {
-  public:
-    static entity::FactoryPtr getFactory();
-  };
-
-  /// @brief A reference to a target group
-  class AGENT_LIB_API TargetRef : public Target
-  {
-  public:
-    static entity::FactoryPtr getFactory();
-  };
-
-  /// @brief A requirement for a target
-  class AGENT_LIB_API TargetRequirement : public Target
-  {
-  public:
-    static entity::FactoryPtr getFactory();
-  };
-
-  
 }  // namespace mtconnect::asset

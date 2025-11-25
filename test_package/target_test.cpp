@@ -337,7 +337,7 @@ TEST_F(TargetTest, verify_target_requirement)
   
   auto root = make_shared<Factory>();
   auto tf = make_shared<Factory>(Requirements {
-    {"Targets", ValueType::ENTITY_LIST, Target::getTargetsFactory(), false}
+    {"Targets", ValueType::ENTITY_LIST, Target::getRequirementTargetsFactory(), false}
   });
   root->registerFactory("Root", tf);
   
@@ -402,7 +402,7 @@ TEST_F(TargetTest, verify_target_requirement_in_json)
   
   auto root = make_shared<Factory>();
   auto tf = make_shared<Factory>(Requirements {
-    {"Targets", ValueType::ENTITY_LIST, Target::getTargetsFactory(), false}
+    {"Targets", ValueType::ENTITY_LIST, Target::getRequirementTargetsFactory(), false}
   });
   root->registerFactory("Root", tf);
   
