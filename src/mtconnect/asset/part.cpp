@@ -28,27 +28,26 @@ namespace mtconnect {
       if (!factory)
       {
         auto customer = make_shared<Factory>(Requirements {
-          {"customerId", true},
-          {"name", false},
-          {"Address", false},
-          {"Description", false},
+            {"customerId", true},
+            {"name", false},
+            {"Address", false},
+            {"Description", false},
         });
-        
+
         auto customers = make_shared<Factory>(Requirements {
-          {"Customer", ValueType::ENTITY, customer, 1, entity::Requirement::Infinite}
-        });
-        
+            {"Customer", ValueType::ENTITY, customer, 1, entity::Requirement::Infinite}});
+
         factory = make_shared<Factory>(*Asset::getFactory());
         factory->addRequirements({
-          {"revision", true},
-          {"family", false},
-          {"drawing", false},
-          {"Customers", ValueType::ENTITY_LIST, customers, true},
+            {"revision", true},
+            {"family", false},
+            {"drawing", false},
+            {"Customers", ValueType::ENTITY_LIST, customers, true},
         });
       }
       return factory;
     }
-    
+
     void PartArchetype::registerAsset()
     {
       static bool once {true};
@@ -65,31 +64,24 @@ namespace mtconnect {
       if (!factory)
       {
         auto identifier = make_shared<Factory>(Requirements {
-          {"type", true},
-          {"stepIdRef", false},
-          {"timestamp", ValueType::TIMESTAMP, true}
-        });
-        
-        
+            {"type", true}, {"stepIdRef", false}, {"timestamp", ValueType::TIMESTAMP, true}});
+
         auto identifiers = make_shared<Factory>(Requirements {
-          {"UniqueIdentitier", ValueType::ENTITY, identifier, 0, entity::Requirement::Infinite},
-          {"GroupIdentifier", ValueType::ENTITY, identifier, 0, entity::Requirement::Infinite}
-        });
+            {"UniqueIdentitier", ValueType::ENTITY, identifier, 0, entity::Requirement::Infinite},
+            {"GroupIdentifier", ValueType::ENTITY, identifier, 0, entity::Requirement::Infinite}});
 
         identifiers->setMinListSize(1);
         identifiers->registerMatchers();
-      
+
         factory = make_shared<Factory>(*Asset::getFactory());
-        factory->addRequirements({
-          {"revision", true},
-          {"family", false},
-          {"drawing", false},
-          {"PartIdentifiers", ValueType::ENTITY_LIST, identifiers, false}
-        });
+        factory->addRequirements({{"revision", true},
+                                  {"family", false},
+                                  {"drawing", false},
+                                  {"PartIdentifiers", ValueType::ENTITY_LIST, identifiers, false}});
       }
       return factory;
     }
-    
+
     void Part::registerAsset()
     {
       static bool once {true};

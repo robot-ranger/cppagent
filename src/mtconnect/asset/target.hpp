@@ -21,10 +21,10 @@
 #include <utility>
 #include <vector>
 
+#include "asset.hpp"
 #include "mtconnect/entity/entity.hpp"
 #include "mtconnect/entity/factory.hpp"
 #include "mtconnect/utilities.hpp"
-#include "asset.hpp"
 
 namespace mtconnect::asset {
   /// @brief A target of a process or a task
@@ -66,5 +66,4 @@ namespace mtconnect::asset {
     static entity::FactoryPtr getFactory();
   };
 
-  
 }  // namespace mtconnect::asset

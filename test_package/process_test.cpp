@@ -120,11 +120,11 @@ TEST_F(ProcessAssetTest, should_parse_a_process_archetype)
 
   auto configuration = asset->get<EntityPtr>("Configuration");
   ASSERT_TRUE(configuration);
-  
+
   auto relationships = configuration->getList("Relationships");
   ASSERT_TRUE(relationships);
   ASSERT_EQ(1, relationships->size());
-  
+
   {
     auto it = relationships->begin();
     ASSERT_EQ("reference_id", (*it)->get<string>("id"));
@@ -132,72 +132,72 @@ TEST_F(ProcessAssetTest, should_parse_a_process_archetype)
     ASSERT_EQ("PEER", (*it)->get<string>("type"));
     ASSERT_EQ("PART_ARCHETYPE", (*it)->get<string>("assetType"));
   }
-  
+
   auto routings = asset->getList("Routings");
   ASSERT_TRUE(routings);
   ASSERT_EQ(1, routings->size());
-  
+
   {
     auto routing = routings->front();
     ASSERT_EQ("routng1", routing->get<string>("routingId"));
     ASSERT_EQ(1, routing->get<int64_t>("precedence"));
-    
+
     auto processSteps = routing->get<EntityList>("ProcessStep");
     ASSERT_EQ(1, processSteps.size());
-    
+
     auto step = processSteps.front();
     ASSERT_EQ("10", step->get<string>("stepId"));
     ASSERT_EQ("Process Step 10", step->get<string>("Description"));
-    
+
     auto st = step->get<Timestamp>("StartTime");
     ASSERT_EQ("2025-11-24T00:00:00Z", getCurrentTime(st, GMT));
     ASSERT_EQ(23000, step->get<double>("Duration"));
-    
+
     auto targets = step->getList("Targets");
     ASSERT_TRUE(targets);
     ASSERT_EQ(1, targets->size());
-    
+
     {
       auto it = targets->begin();
       ASSERT_EQ("group1", (*it)->get<string>("groupIdRef"));
     }
-    
+
     auto activityGroups = step->getList("ActivityGroups");
     ASSERT_TRUE(activityGroups);
     ASSERT_EQ(1, activityGroups->size());
-    
+
     {
       auto it = activityGroups->begin();
       auto activityGroup = *it;
       ASSERT_EQ("act1", activityGroup->get<string>("activityGroupId"));
-      
+
       auto activities = activityGroup->get<EntityList>("Activity");
       ASSERT_EQ(1, activities.size());
-      
+
       auto activity = activities.front();
       ASSERT_EQ("a1", activity->get<string>("activityId"));
       ASSERT_EQ(1, activity->get<int64_t>("sequence"));
       ASSERT_EQ("First Activity", activity->get<string>("Description"));
     }
   }
-  
+
   auto targets = asset->getList("Targets");
   ASSERT_TRUE(targets);
   ASSERT_EQ(2, targets->size());
-  
+
   {
     auto it = targets->begin();
     ASSERT_EQ("TargetDevice", (*it)->getName());
     ASSERT_EQ("device1", (*it)->get<string>("deviceUuid"));
-    
+
     it++;
     auto targetGroup = *it;
     ASSERT_EQ("TargetGroup", targetGroup->getName());
     ASSERT_EQ("group1", targetGroup->get<string>("groupId"));
-    
+
     auto targetDevices = targetGroup->get<EntityList>("LIST");
     ASSERT_EQ(2, targetDevices.size());
-    
+
     {
       auto dit = targetDevices.begin();
       ASSERT_EQ("TargetDevice", (*dit)->getName());
@@ -207,8 +207,7 @@ TEST_F(ProcessAssetTest, should_parse_a_process_archetype)
       ASSERT_EQ("device3", (*dit)->get<string>("deviceUuid"));
     }
   }
-  
-  
+
   // Round trip test
   entity::XmlPrinter printer;
   printer.print(*m_writer, entity, {});
@@ -251,33 +250,33 @@ TEST_F(ProcessAssetTest, process_archetype_can_have_multiple_routings)
   </Targets>
 </ProcessArchetype>
 )DOC";
-  
+
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(Asset::getRoot(), doc, errors);
   ASSERT_EQ(0, errors.size());
-  
+
   auto asset = dynamic_cast<Asset *>(entity.get());
   ASSERT_NE(nullptr, asset);
-  
+
   auto routings = asset->getList("Routings");
   ASSERT_TRUE(routings);
   ASSERT_EQ(2, routings->size());
-  
+
   auto it = routings->begin();
   {
     auto routing = *it;
     ASSERT_EQ("routng1", routing->get<string>("routingId"));
     ASSERT_EQ(1, routing->get<int64_t>("precedence"));
-    
+
     auto processSteps = routing->get<EntityList>("ProcessStep");
     ASSERT_EQ(1, processSteps.size());
-    
+
     auto step = processSteps.front();
     ASSERT_EQ("10", step->get<string>("stepId"));
     ASSERT_EQ("Process Step 10", step->get<string>("Description"));
-    
+
     auto st = step->get<Timestamp>("StartTime");
     ASSERT_EQ("2025-11-24T00:00:00Z", getCurrentTime(st, GMT));
     ASSERT_EQ(23000, step->get<double>("Duration"));
@@ -287,23 +286,23 @@ TEST_F(ProcessAssetTest, process_archetype_can_have_multiple_routings)
     auto routing = *it;
     ASSERT_EQ("routng2", routing->get<string>("routingId"));
     ASSERT_EQ(2, routing->get<int64_t>("precedence"));
-    
+
     auto processSteps = routing->get<EntityList>("ProcessStep");
     ASSERT_EQ(1, processSteps.size());
-    
+
     auto step = processSteps.front();
     ASSERT_EQ("11", step->get<string>("stepId"));
     ASSERT_EQ("Process Step 11", step->get<string>("Description"));
-    
+
     auto st = step->get<Timestamp>("StartTime");
     ASSERT_EQ("2025-11-25T00:00:00Z", getCurrentTime(st, GMT));
     ASSERT_EQ(20000, step->get<double>("Duration"));
   }
-  
+
   // Round trip test
   entity::XmlPrinter printer;
   printer.print(*m_writer, entity, {});
-  
+
   string content = m_writer->getContent();
   ASSERT_EQ(content, doc);
 }
@@ -323,27 +322,27 @@ TEST_F(ProcessAssetTest, process_steps_can_be_optional)
   </Routings>
 </ProcessArchetype>
 )DOC";
-    
+
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(Asset::getRoot(), doc, errors);
   ASSERT_EQ(0, errors.size());
-  
+
   auto asset = dynamic_cast<Asset *>(entity.get());
   ASSERT_NE(nullptr, asset);
-  
+
   auto routings = asset->getList("Routings");
   ASSERT_TRUE(routings);
   ASSERT_EQ(1, routings->size());
-  
+
   auto routing = routings->front();
   ASSERT_EQ("routng1", routing->get<string>("routingId"));
-  
+
   auto processSteps = routing->get<EntityList>("ProcessStep");
   ASSERT_EQ(1, processSteps.size());
   auto step = processSteps.front();
-  
+
   ASSERT_EQ("10", step->get<string>("stepId"));
   ASSERT_EQ(5, step->get<int64_t>("sequence"));
   ASSERT_EQ(true, step->get<bool>("optional"));
@@ -351,7 +350,7 @@ TEST_F(ProcessAssetTest, process_steps_can_be_optional)
   // Round trip test
   entity::XmlPrinter printer;
   printer.print(*m_writer, entity, {});
-  
+
   string content = m_writer->getContent();
   ASSERT_EQ(content, doc);
 }
@@ -369,15 +368,16 @@ TEST_F(ProcessAssetTest, process_archetype_must_have_at_least_one_routing)
   </Targets>
 </ProcessArchetype>
 )DOC";
-  
+
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(Asset::getRoot(), doc, errors);
   ASSERT_EQ(1, errors.size());
-  auto error = dynamic_cast<PropertyError*>(errors.front().get());
-  
-  ASSERT_EQ("ProcessArchetype(Routings): Property Routings is required and not provided"s, error->what());
+  auto error = dynamic_cast<PropertyError *>(errors.front().get());
+
+  ASSERT_EQ("ProcessArchetype(Routings): Property Routings is required and not provided"s,
+            error->what());
   ASSERT_EQ("ProcessArchetype", error->getEntity());
   ASSERT_EQ("Routings", error->getProperty());
 }
@@ -399,22 +399,23 @@ TEST_F(ProcessAssetTest, process_archetype_routing_must_have_a_process_step)
   </Targets>
 </ProcessArchetype>
 )DOC";
-  
+
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(Asset::getRoot(), doc, errors);
   ASSERT_EQ(5, errors.size());
-  
+
   auto it = errors.begin();
   {
-    auto error = dynamic_cast<PropertyError*>(it->get());
+    auto error = dynamic_cast<PropertyError *>(it->get());
     ASSERT_TRUE(error);
-    EXPECT_EQ("Routing(ProcessStep): Property ProcessStep is required and not provided"s, error->what());
+    EXPECT_EQ("Routing(ProcessStep): Property ProcessStep is required and not provided"s,
+              error->what());
     EXPECT_EQ("Routing", error->getEntity());
     EXPECT_EQ("ProcessStep", error->getProperty());
   }
-  
+
   it++;
   {
     auto error = it->get();
@@ -422,12 +423,14 @@ TEST_F(ProcessAssetTest, process_archetype_routing_must_have_a_process_step)
     EXPECT_EQ("Routings: Invalid element 'Routing'"s, error->what());
     EXPECT_EQ("Routings", error->getEntity());
   }
-  
+
   it++;
   {
-    auto error = dynamic_cast<PropertyError*>(it->get());
+    auto error = dynamic_cast<PropertyError *>(it->get());
     ASSERT_TRUE(error);
-    EXPECT_EQ("Routings(Routing): Entity list requirement Routing must have at least 1 entries, 0 found"s, error->what());
+    EXPECT_EQ(
+        "Routings(Routing): Entity list requirement Routing must have at least 1 entries, 0 found"s,
+        error->what());
     EXPECT_EQ("Routings", error->getEntity());
     EXPECT_EQ("Routing", error->getProperty());
   }
@@ -442,13 +445,13 @@ TEST_F(ProcessAssetTest, process_archetype_routing_must_have_a_process_step)
 
   it++;
   {
-    auto error = dynamic_cast<PropertyError*>(it->get());
+    auto error = dynamic_cast<PropertyError *>(it->get());
     ASSERT_TRUE(error);
-    EXPECT_EQ("ProcessArchetype(Routings): Property Routings is required and not provided"s, error->what());
+    EXPECT_EQ("ProcessArchetype(Routings): Property Routings is required and not provided"s,
+              error->what());
     EXPECT_EQ("ProcessArchetype", error->getEntity());
     EXPECT_EQ("Routings", error->getProperty());
   }
-  
 }
 
 TEST_F(ProcessAssetTest, activity_can_have_a_sequence_precidence_and_be_options)
@@ -473,20 +476,20 @@ TEST_F(ProcessAssetTest, activity_can_have_a_sequence_precidence_and_be_options)
 
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(Asset::getRoot(), doc, errors);
   ASSERT_EQ(0, errors.size());
-  
+
   auto asset = dynamic_cast<Asset *>(entity.get());
   ASSERT_NE(nullptr, asset);
-  
+
   auto routings = asset->getList("Routings");
   ASSERT_TRUE(routings);
   ASSERT_EQ(1, routings->size());
-  
+
   auto routing = routings->front();
   ASSERT_EQ("routng1", routing->get<string>("routingId"));
-  
+
   auto processSteps = routing->get<EntityList>("ProcessStep");
   ASSERT_EQ(1, processSteps.size());
   auto step = processSteps.front();
@@ -494,14 +497,14 @@ TEST_F(ProcessAssetTest, activity_can_have_a_sequence_precidence_and_be_options)
   auto activityGroups = step->getList("ActivityGroups");
   ASSERT_TRUE(activityGroups);
   ASSERT_EQ(1, activityGroups->size());
-  
+
   auto activityGroup = activityGroups->front();
   ASSERT_EQ("act1", activityGroup->get<string>("activityGroupId"));
   ASSERT_EQ("fred", activityGroup->get<string>("name"));
-  
+
   auto activities = activityGroup->get<EntityList>("Activity");
   ASSERT_EQ(1, activities.size());
-  
+
   auto activity = activities.front();
   ASSERT_EQ("a1", activity->get<string>("activityId"));
   ASSERT_EQ(2, activity->get<int64_t>("sequence"));
@@ -512,7 +515,7 @@ TEST_F(ProcessAssetTest, activity_can_have_a_sequence_precidence_and_be_options)
   // Round trip test
   entity::XmlPrinter printer;
   printer.print(*m_writer, entity, {});
-  
+
   string content = m_writer->getContent();
   ASSERT_EQ(content, doc);
 }
@@ -554,15 +557,15 @@ TEST_F(ProcessAssetTest, should_generate_json)
   </Targets>
 </ProcessArchetype>
 )DOC";
-  
+
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(Asset::getRoot(), doc, errors);
   ASSERT_EQ(0, errors.size());
-  
+
   entity::JsonEntityPrinter jprinter(2, true);
-  
+
   auto sdoc = jprinter.print(entity);
   EXPECT_EQ(R"({
   "ProcessArchetype": {
@@ -641,7 +644,8 @@ TEST_F(ProcessAssetTest, should_generate_json)
     "assetId": "PROCESS_ARCH_ID",
     "revision": "1"
   }
-})", sdoc);
+})",
+            sdoc);
 }
 
 TEST_F(ProcessAssetTest, should_parse_and_generate_a_process)
@@ -681,17 +685,17 @@ TEST_F(ProcessAssetTest, should_parse_and_generate_a_process)
   </Targets>
 </Process>
 )DOC";
-  
+
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(Asset::getRoot(), doc, errors);
   ASSERT_EQ(0, errors.size());
-  
+
   // Round trip test
   entity::XmlPrinter printer;
   printer.print(*m_writer, entity, {});
-  
+
   string content = m_writer->getContent();
   ASSERT_EQ(content, doc);
 }
@@ -730,22 +734,24 @@ TEST_F(ProcessAssetTest, process_can_only_have_one_routings)
   </Targets>
 </Process>
 )DOC";
-  
+
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(Asset::getRoot(), doc, errors);
   ASSERT_EQ(3, errors.size());
-  
+
   auto it = errors.begin();
   {
-    auto error = dynamic_cast<PropertyError*>(it->get());
+    auto error = dynamic_cast<PropertyError *>(it->get());
     ASSERT_TRUE(error);
-    EXPECT_EQ("Routings(Routing): Entity list requirement Routing must have at least 1 and no more than 1 entries, 2 found"s, error->what());
+    EXPECT_EQ(
+        "Routings(Routing): Entity list requirement Routing must have at least 1 and no more than 1 entries, 2 found"s,
+        error->what());
     EXPECT_EQ("Routings", error->getEntity());
     EXPECT_EQ("Routing", error->getProperty());
   }
-  
+
   it++;
   {
     auto error = it->get();
@@ -756,7 +762,7 @@ TEST_F(ProcessAssetTest, process_can_only_have_one_routings)
 
   it++;
   {
-    auto error = dynamic_cast<PropertyError*>(it->get());
+    auto error = dynamic_cast<PropertyError *>(it->get());
     ASSERT_TRUE(error);
     EXPECT_EQ("Process(Routings): Property Routings is required and not provided"s, error->what());
     EXPECT_EQ("Process", error->getEntity());

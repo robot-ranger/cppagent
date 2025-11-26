@@ -24,7 +24,6 @@
 #include "asset.hpp"
 #include "mtconnect/entity/factory.hpp"
 #include "mtconnect/utilities.hpp"
-#include "asset.hpp"
 
 namespace mtconnect::asset {
   /// @brief Manufacturing process archetype asset

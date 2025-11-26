@@ -356,10 +356,8 @@ TEST_F(JsonPrinterTest, elements_with_property_list_version_2)
   json jdoc = json::parse(sdoc);
 
   ASSERT_EQ(2, jdoc.at("/Root/CuttingItems/count"_json_pointer).get<int>());
-  ASSERT_EQ("1",
-            jdoc.at("/Root/CuttingItems/CuttingItem/0/itemId"_json_pointer).get<string>());
-  ASSERT_EQ("2",
-            jdoc.at("/Root/CuttingItems/CuttingItem/1/itemId"_json_pointer).get<string>());
+  ASSERT_EQ("1", jdoc.at("/Root/CuttingItems/CuttingItem/0/itemId"_json_pointer).get<string>());
+  ASSERT_EQ("2", jdoc.at("/Root/CuttingItems/CuttingItem/1/itemId"_json_pointer).get<string>());
 }
 
 TEST_F(JsonPrinterTest, should_honor_include_hidden_parameter)

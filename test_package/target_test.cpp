@@ -57,10 +57,7 @@ int main(int argc, char *argv[])
 class TargetTest : public testing::Test
 {
 protected:
-  void SetUp() override
-  {
-    m_writer = make_unique<printer::XmlWriter>(true);
-  }
+  void SetUp() override { m_writer = make_unique<printer::XmlWriter>(true); }
 
   void TearDown() override { m_writer.reset(); }
 
@@ -76,11 +73,10 @@ TEST_F(TargetTest, simple_target_device)
   </Targets>
 </Root>
 )DOC";
-  
+
   auto root = make_shared<Factory>();
-  auto tf = make_shared<Factory>(Requirements {
-    {"Targets", ValueType::ENTITY_LIST, Target::getDeviceTargetsFactory(), false}
-  });
+  auto tf = make_shared<Factory>(
+      Requirements {{"Targets", ValueType::ENTITY_LIST, Target::getDeviceTargetsFactory(), false}});
   root->registerFactory("Root", tf);
 
   ErrorList errors;
@@ -89,7 +85,7 @@ TEST_F(TargetTest, simple_target_device)
   auto entity = parser.parse(root, doc, errors);
   ASSERT_EQ(0, errors.size());
   ASSERT_TRUE(entity);
-  
+
   auto targets = entity->getList("Targets");
   ASSERT_TRUE(targets);
   ASSERT_EQ(1, targets->size());
@@ -112,42 +108,41 @@ TEST_F(TargetTest, target_device_and_device_group)
   </Targets>
 </Root>
 )DOC";
-  
+
   auto root = make_shared<Factory>();
-  auto tf = make_shared<Factory>(Requirements {
-    {"Targets", ValueType::ENTITY_LIST, Target::getDeviceTargetsFactory(), false}
-  });
+  auto tf = make_shared<Factory>(
+      Requirements {{"Targets", ValueType::ENTITY_LIST, Target::getDeviceTargetsFactory(), false}});
   root->registerFactory("Root", tf);
-  
+
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(root, doc, errors);
   ASSERT_EQ(0, errors.size());
   ASSERT_TRUE(entity);
-  
+
   auto targets = entity->getList("Targets");
   ASSERT_TRUE(targets);
   ASSERT_EQ(2, targets->size());
   auto it = targets->begin();
-  
+
   ASSERT_EQ("TargetDevice", (*it)->getName());
   ASSERT_EQ("device-1234", (*it)->get<string>("deviceUuid"));
-  
+
   it++;
   auto group = *it;
-  
+
   ASSERT_EQ("TargetGroup", group->getName());
   ASSERT_EQ("group_id", group->get<string>("groupId"));
 
   ASSERT_TRUE(group->hasProperty("LIST"));
   const auto groupTargets = group->getListProperty();
   ASSERT_EQ(2, groupTargets.size());
-  
+
   auto git = groupTargets.begin();
   ASSERT_EQ("TargetDevice", (*git)->getName());
   ASSERT_EQ("device-5678", (*git)->get<string>("deviceUuid"));
-  
+
   git++;
   ASSERT_EQ("TargetDevice", (*git)->getName());
   ASSERT_EQ("device-9999", (*git)->get<string>("deviceUuid"));
@@ -166,20 +161,19 @@ TEST_F(TargetTest, target_device_and_device_group_json)
   </Targets>
 </Root>
 )DOC";
-  
+
   auto root = make_shared<Factory>();
-  auto tf = make_shared<Factory>(Requirements {
-    {"Targets", ValueType::ENTITY_LIST, Target::getDeviceTargetsFactory(), false}
-  });
+  auto tf = make_shared<Factory>(
+      Requirements {{"Targets", ValueType::ENTITY_LIST, Target::getDeviceTargetsFactory(), false}});
   root->registerFactory("Root", tf);
-  
+
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(root, doc, errors);
   ASSERT_EQ(0, errors.size());
   ASSERT_TRUE(entity);
-  
+
   entity::JsonEntityPrinter jsonPrinter(2, true);
   auto json = jsonPrinter.print(entity);
 
@@ -206,7 +200,8 @@ TEST_F(TargetTest, target_device_and_device_group_json)
       ]
     }
   }
-})JSON", json);
+})JSON",
+            json);
 }
 
 TEST_F(TargetTest, nested_target_groups_with_target_refs)
@@ -226,58 +221,57 @@ TEST_F(TargetTest, nested_target_groups_with_target_refs)
   </Targets>
 </Root>
 )DOC";
-  
+
   auto root = make_shared<Factory>();
-  auto tf = make_shared<Factory>(Requirements {
-    {"Targets", ValueType::ENTITY_LIST, Target::getDeviceTargetsFactory(), false}
-  });
+  auto tf = make_shared<Factory>(
+      Requirements {{"Targets", ValueType::ENTITY_LIST, Target::getDeviceTargetsFactory(), false}});
   root->registerFactory("Root", tf);
-  
+
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(root, doc, errors);
   ASSERT_EQ(0, errors.size());
   ASSERT_TRUE(entity);
-  
+
   auto targets = entity->getList("Targets");
   ASSERT_TRUE(targets);
   ASSERT_EQ(3, targets->size());
   auto it = targets->begin();
-  
+
   ASSERT_EQ("TargetDevice", (*it)->getName());
   ASSERT_EQ("device-1234", (*it)->get<string>("deviceUuid"));
-  
+
   it++;
   auto group = *it;
-  
+
   ASSERT_EQ("TargetGroup", group->getName());
   ASSERT_EQ("A", group->get<string>("groupId"));
-  
+
   ASSERT_TRUE(group->hasProperty("LIST"));
   const auto groupTargets = group->getListProperty();
   ASSERT_EQ(2, groupTargets.size());
-  
+
   auto git = groupTargets.begin();
   ASSERT_EQ("TargetDevice", (*git)->getName());
   ASSERT_EQ("device-5678", (*git)->get<string>("deviceUuid"));
-  
+
   git++;
   ASSERT_EQ("TargetDevice", (*git)->getName());
   ASSERT_EQ("device-9999", (*git)->get<string>("deviceUuid"));
-  
+
   group = *(++it);
   ASSERT_EQ("TargetGroup", group->getName());
   ASSERT_EQ("B", group->get<string>("groupId"));
-  
+
   ASSERT_TRUE(group->hasProperty("LIST"));
   const auto groupTargets2 = group->getListProperty();
   ASSERT_EQ(2, groupTargets2.size());
-  
+
   git = groupTargets2.begin();
   ASSERT_EQ("TargetDevice", (*git)->getName());
   ASSERT_EQ("device-2222", (*git)->get<string>("deviceUuid"));
-  
+
   git++;
   ASSERT_EQ("TargetRef", (*git)->getName());
   ASSERT_EQ("A", (*git)->get<string>("groupIdRef"));
@@ -295,25 +289,24 @@ TEST_F(TargetTest, reject_empty_groups)
   </Targets>
 </Root>
 )DOC";
-  
+
   auto root = make_shared<Factory>();
-  auto tf = make_shared<Factory>(Requirements {
-    {"Targets", ValueType::ENTITY_LIST, Target::getDeviceTargetsFactory(), false}
-  });
+  auto tf = make_shared<Factory>(
+      Requirements {{"Targets", ValueType::ENTITY_LIST, Target::getDeviceTargetsFactory(), false}});
   root->registerFactory("Root", tf);
-  
+
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(root, doc, errors);
   ASSERT_EQ(2, errors.size());
   ASSERT_TRUE(entity);
-  
+
   auto targets = entity->getList("Targets");
   ASSERT_TRUE(targets);
   ASSERT_EQ(1, targets->size());
   auto it = targets->begin();
-  
+
   ASSERT_EQ("TargetDevice", (*it)->getName());
   ASSERT_EQ("device-1234", (*it)->get<string>("deviceUuid"));
 }
@@ -332,50 +325,49 @@ TEST_F(TargetTest, verify_target_requirement)
   </Targets>
 </Root>
 )DOC";
-  
+
   auto root = make_shared<Factory>();
   auto tf = make_shared<Factory>(Requirements {
-    {"Targets", ValueType::ENTITY_LIST, Target::getRequirementTargetsFactory(), false}
-  });
+      {"Targets", ValueType::ENTITY_LIST, Target::getRequirementTargetsFactory(), false}});
   root->registerFactory("Root", tf);
-  
+
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(root, doc, errors);
   ASSERT_EQ(0, errors.size());
   ASSERT_TRUE(entity);
-  
+
   auto targets = entity->getList("Targets");
   ASSERT_TRUE(targets);
   ASSERT_EQ(1, targets->size());
   auto it = targets->begin();
-  
+
   ASSERT_EQ("TargetRequirement", (*it)->getName());
   ASSERT_EQ("req1", (*it)->get<string>("requirementId"));
-  
+
   ASSERT_TRUE((*it)->hasProperty("CapabilityTable"));
   const auto table = (*it)->get<DataSet>("CapabilityTable");
-  
+
   ASSERT_EQ(2, table.size());
-  
+
   auto rowIt = table.begin();
   ASSERT_EQ("R1", rowIt->m_key);
   ASSERT_TRUE(holds_alternative<TableRow>(rowIt->m_value));
   auto &row = get<TableRow>(rowIt->m_value);
   ASSERT_EQ(1, row.size());
-  
+
   auto cellIt = row.begin();
   ASSERT_EQ("C1", cellIt->m_key);
   ASSERT_TRUE(holds_alternative<string>(cellIt->m_value));
   ASSERT_EQ("ABC", get<string>(cellIt->m_value));
-  
+
   rowIt++;
   ASSERT_EQ("R2", rowIt->m_key);
   ASSERT_TRUE(holds_alternative<TableRow>(rowIt->m_value));
   auto &row2 = get<TableRow>(rowIt->m_value);
   ASSERT_EQ(1, row2.size());
-  
+
   cellIt = row2.begin();
   ASSERT_EQ("C2", cellIt->m_key);
   ASSERT_TRUE(holds_alternative<int64_t>(cellIt->m_value));
@@ -396,24 +388,22 @@ TEST_F(TargetTest, verify_target_requirement_in_json)
   </Targets>
 </Root>
 )DOC";
-  
-  
+
   auto root = make_shared<Factory>();
   auto tf = make_shared<Factory>(Requirements {
-    {"Targets", ValueType::ENTITY_LIST, Target::getRequirementTargetsFactory(), false}
-  });
+      {"Targets", ValueType::ENTITY_LIST, Target::getRequirementTargetsFactory(), false}});
   root->registerFactory("Root", tf);
-  
+
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(root, doc, errors);
   ASSERT_EQ(0, errors.size());
   ASSERT_TRUE(entity);
-  
+
   entity::JsonEntityPrinter jsonPrinter(2, true);
   auto json = jsonPrinter.print(entity);
-  
+
   ASSERT_EQ(R"JSON({
   "Root": {
     "Targets": {
@@ -432,6 +422,6 @@ TEST_F(TargetTest, verify_target_requirement_in_json)
       ]
     }
   }
-})JSON", json);
-
+})JSON",
+            json);
 }

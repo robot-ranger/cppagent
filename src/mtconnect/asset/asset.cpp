@@ -16,10 +16,11 @@
 //
 
 #include "asset.hpp"
-#include "mtconnect/device_model/configuration/configuration.hpp"
 
 #include <map>
 #include <utility>
+
+#include "mtconnect/device_model/configuration/configuration.hpp"
 
 using namespace std;
 
@@ -30,11 +31,11 @@ namespace mtconnect {
     {
       using namespace device_model::configuration;
       static auto asset = make_shared<Factory>(
-          Requirements({Requirement("assetId", false), Requirement("deviceUuid", false),
-                        Requirement("timestamp", ValueType::TIMESTAMP, false),
-                        Requirement("hash", false),
-                        Requirement("Configuration", ValueType::ENTITY, Configuration::getFactory(), false),
-                        Requirement("removed", ValueType::BOOL, false)}),
+          Requirements(
+              {Requirement("assetId", false), Requirement("deviceUuid", false),
+               Requirement("timestamp", ValueType::TIMESTAMP, false), Requirement("hash", false),
+               Requirement("Configuration", ValueType::ENTITY, Configuration::getFactory(), false),
+               Requirement("removed", ValueType::BOOL, false)}),
           [](const std::string &name, Properties &props) -> EntityPtr {
             return make_shared<Asset>(name, props);
           });
