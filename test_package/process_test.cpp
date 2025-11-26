@@ -626,16 +626,14 @@ TEST_F(ProcessAssetTest, should_generate_json)
       ],
       "TargetGroup": [
         {
-          "list": {
-            "TargetDevice": [
-              {
-                "targetId": "device2"
-              },
-              {
-                "targetId": "device3"
-              }
-            ]
-          },
+          "TargetDevice": [
+            {
+              "targetId": "device2"
+            },
+            {
+              "targetId": "device3"
+            }
+          ],
           "groupId": "group1"
         }
       ]
@@ -643,6 +641,5 @@ TEST_F(ProcessAssetTest, should_generate_json)
     "assetId": "PROCESS_ARCH_ID",
     "revision": "1"
   }
-
-)", sdoc);
+})", sdoc);
 }

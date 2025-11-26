@@ -193,16 +193,14 @@ TEST_F(TargetTest, target_device_and_device_group_json)
       ],
       "TargetGroup": [
         {
-          "list": {
-            "TargetDevice": [
-              {
-                "targetId": "device-5678"
-              },
-              {
-                "targetId": "device-9999"
-              }
-            ]
-          },
+          "TargetDevice": [
+            {
+              "targetId": "device-5678"
+            },
+            {
+              "targetId": "device-9999"
+            }
+          ],
           "groupId": "group_id"
         }
       ]
