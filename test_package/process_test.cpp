@@ -643,3 +643,123 @@ TEST_F(ProcessAssetTest, should_generate_json)
   }
 })", sdoc);
 }
+
+TEST_F(ProcessAssetTest, should_parse_and_generate_a_process)
+{
+  const auto doc =
+      R"DOC(<Process assetId="PROCESS_ARCH_ID" revision="1">
+  <Configuration>
+    <Relationships>
+      <AssetRelationship assetIdRef="PART_ID" assetType="PART_ARCHETYPE" id="reference_id" type="PEER"/>
+    </Relationships>
+  </Configuration>
+  <Routings>
+    <Routing precedence="1" routingId="routng1">
+      <ProcessStep stepId="10">
+        <Description>Process Step 10</Description>
+        <StartTime>2025-11-24T00:00:00Z</StartTime>
+        <Duration>23000</Duration>
+        <Targets>
+          <TargetRef groupIdRef="group1"/>
+        </Targets>
+        <ActivityGroups>
+          <ActivityGroup activityGroupId="act1">
+            <Activity activityId="a1" sequence="1">
+              <Description>First Activity</Description>
+            </Activity>
+          </ActivityGroup>
+        </ActivityGroups>
+      </ProcessStep>
+    </Routing>
+  </Routings>
+  <Targets>
+    <TargetDevice targetId="device1"/>
+    <TargetGroup groupId="group1">
+      <TargetDevice targetId="device2"/>
+      <TargetDevice targetId="device3"/>
+    </TargetGroup>
+  </Targets>
+</Process>
+)DOC";
+  
+  ErrorList errors;
+  entity::XmlParser parser;
+  
+  auto entity = parser.parse(Asset::getRoot(), doc, errors);
+  ASSERT_EQ(0, errors.size());
+  
+  // Round trip test
+  entity::XmlPrinter printer;
+  printer.print(*m_writer, entity, {});
+  
+  string content = m_writer->getContent();
+  ASSERT_EQ(content, doc);
+}
+
+TEST_F(ProcessAssetTest, process_can_only_have_one_routings)
+{
+  const auto doc =
+      R"DOC(<Process assetId="PROCESS_ARCH_ID" revision="1">
+  <Configuration>
+    <Relationships>
+      <AssetRelationship assetIdRef="PART_ID" assetType="PART_ARCHETYPE" id="reference_id" type="PEER"/>
+    </Relationships>
+  </Configuration>
+  <Routings>
+    <Routing precedence="1" routingId="routng1">
+      <ProcessStep stepId="10">
+        <Description>Process Step 10</Description>
+        <StartTime>2025-11-24T00:00:00Z</StartTime>
+        <Duration>23000</Duration>
+      </ProcessStep>
+    </Routing>
+    <Routing precedence="2" routingId="routng2">
+      <ProcessStep stepId="11">
+        <Description>Process Step 11</Description>
+        <StartTime>2025-11-25T00:00:00Z</StartTime>
+        <Duration>20000</Duration>
+      </ProcessStep>
+    </Routing>
+  </Routings>
+  <Targets>
+    <TargetDevice targetId="device1"/>
+    <TargetGroup groupId="group1">
+      <TargetDevice targetId="device2"/>
+      <TargetDevice targetId="device3"/>
+    </TargetGroup>
+  </Targets>
+</Process>
+)DOC";
+  
+  ErrorList errors;
+  entity::XmlParser parser;
+  
+  auto entity = parser.parse(Asset::getRoot(), doc, errors);
+  ASSERT_EQ(3, errors.size());
+  
+  auto it = errors.begin();
+  {
+    auto error = dynamic_cast<PropertyError*>(it->get());
+    ASSERT_TRUE(error);
+    EXPECT_EQ("Routings(Routing): Entity list requirement Routing must have at least 1 and no more than 1 entries, 2 found"s, error->what());
+    EXPECT_EQ("Routings", error->getEntity());
+    EXPECT_EQ("Routing", error->getProperty());
+  }
+  
+  it++;
+  {
+    auto error = it->get();
+    ASSERT_TRUE(error);
+    EXPECT_EQ("Process: Invalid element 'Routings'"s, error->what());
+    EXPECT_EQ("Process", error->getEntity());
+  }
+
+  it++;
+  {
+    auto error = dynamic_cast<PropertyError*>(it->get());
+    ASSERT_TRUE(error);
+    EXPECT_EQ("Process(Routings): Property Routings is required and not provided"s, error->what());
+    EXPECT_EQ("Process", error->getEntity());
+    EXPECT_EQ("Routings", error->getProperty());
+  }
+}
