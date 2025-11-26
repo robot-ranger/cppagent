@@ -72,7 +72,7 @@ TEST_F(TargetTest, simple_target_device)
   const auto doc = R"DOC(
 <Root>
   <Targets>
-    <TargetDevice targetId="device-1234"/>
+    <TargetDevice deviceUuid="device-1234"/>
   </Targets>
 </Root>
 )DOC";
@@ -96,7 +96,7 @@ TEST_F(TargetTest, simple_target_device)
   auto it = targets->begin();
 
   ASSERT_EQ("TargetDevice", (*it)->getName());
-  ASSERT_EQ("device-1234", (*it)->get<string>("targetId"));
+  ASSERT_EQ("device-1234", (*it)->get<string>("deviceUuid"));
 }
 
 TEST_F(TargetTest, target_device_and_device_group)
@@ -104,10 +104,10 @@ TEST_F(TargetTest, target_device_and_device_group)
   const auto doc = R"DOC(
 <Root>
   <Targets>
-    <TargetDevice targetId="device-1234"/>
+    <TargetDevice deviceUuid="device-1234"/>
     <TargetGroup groupId="group_id">
-      <TargetDevice targetId="device-5678"/>
-      <TargetDevice targetId="device-9999"/>
+      <TargetDevice deviceUuid="device-5678"/>
+      <TargetDevice deviceUuid="device-9999"/>
     </TargetGroup>
   </Targets>
 </Root>
@@ -132,7 +132,7 @@ TEST_F(TargetTest, target_device_and_device_group)
   auto it = targets->begin();
   
   ASSERT_EQ("TargetDevice", (*it)->getName());
-  ASSERT_EQ("device-1234", (*it)->get<string>("targetId"));
+  ASSERT_EQ("device-1234", (*it)->get<string>("deviceUuid"));
   
   it++;
   auto group = *it;
@@ -146,11 +146,11 @@ TEST_F(TargetTest, target_device_and_device_group)
   
   auto git = groupTargets.begin();
   ASSERT_EQ("TargetDevice", (*git)->getName());
-  ASSERT_EQ("device-5678", (*git)->get<string>("targetId"));
+  ASSERT_EQ("device-5678", (*git)->get<string>("deviceUuid"));
   
   git++;
   ASSERT_EQ("TargetDevice", (*git)->getName());
-  ASSERT_EQ("device-9999", (*git)->get<string>("targetId"));
+  ASSERT_EQ("device-9999", (*git)->get<string>("deviceUuid"));
 }
 
 TEST_F(TargetTest, target_device_and_device_group_json)
@@ -158,10 +158,10 @@ TEST_F(TargetTest, target_device_and_device_group_json)
   const auto doc = R"DOC(
 <Root>
   <Targets>
-    <TargetDevice targetId="device-1234"/>
+    <TargetDevice deviceUuid="device-1234"/>
     <TargetGroup groupId="group_id">
-      <TargetDevice targetId="device-5678"/>
-      <TargetDevice targetId="device-9999"/>
+      <TargetDevice deviceUuid="device-5678"/>
+      <TargetDevice deviceUuid="device-9999"/>
     </TargetGroup>
   </Targets>
 </Root>
@@ -188,17 +188,17 @@ TEST_F(TargetTest, target_device_and_device_group_json)
     "Targets": {
       "TargetDevice": [
         {
-          "targetId": "device-1234"
+          "deviceUuid": "device-1234"
         }
       ],
       "TargetGroup": [
         {
           "TargetDevice": [
             {
-              "targetId": "device-5678"
+              "deviceUuid": "device-5678"
             },
             {
-              "targetId": "device-9999"
+              "deviceUuid": "device-9999"
             }
           ],
           "groupId": "group_id"
@@ -214,13 +214,13 @@ TEST_F(TargetTest, nested_target_groups_with_target_refs)
   const auto doc = R"DOC(
 <Root>
   <Targets>
-    <TargetDevice targetId="device-1234"/>
+    <TargetDevice deviceUuid="device-1234"/>
     <TargetGroup groupId="A">
-      <TargetDevice targetId="device-5678"/>
-      <TargetDevice targetId="device-9999"/>
+      <TargetDevice deviceUuid="device-5678"/>
+      <TargetDevice deviceUuid="device-9999"/>
     </TargetGroup>
     <TargetGroup groupId="B">
-      <TargetDevice targetId="device-2222"/>
+      <TargetDevice deviceUuid="device-2222"/>
       <TargetRef groupIdRef="A"/>
     </TargetGroup>
   </Targets>
@@ -246,7 +246,7 @@ TEST_F(TargetTest, nested_target_groups_with_target_refs)
   auto it = targets->begin();
   
   ASSERT_EQ("TargetDevice", (*it)->getName());
-  ASSERT_EQ("device-1234", (*it)->get<string>("targetId"));
+  ASSERT_EQ("device-1234", (*it)->get<string>("deviceUuid"));
   
   it++;
   auto group = *it;
@@ -260,11 +260,11 @@ TEST_F(TargetTest, nested_target_groups_with_target_refs)
   
   auto git = groupTargets.begin();
   ASSERT_EQ("TargetDevice", (*git)->getName());
-  ASSERT_EQ("device-5678", (*git)->get<string>("targetId"));
+  ASSERT_EQ("device-5678", (*git)->get<string>("deviceUuid"));
   
   git++;
   ASSERT_EQ("TargetDevice", (*git)->getName());
-  ASSERT_EQ("device-9999", (*git)->get<string>("targetId"));
+  ASSERT_EQ("device-9999", (*git)->get<string>("deviceUuid"));
   
   group = *(++it);
   ASSERT_EQ("TargetGroup", group->getName());
@@ -276,7 +276,7 @@ TEST_F(TargetTest, nested_target_groups_with_target_refs)
   
   git = groupTargets2.begin();
   ASSERT_EQ("TargetDevice", (*git)->getName());
-  ASSERT_EQ("device-2222", (*git)->get<string>("targetId"));
+  ASSERT_EQ("device-2222", (*git)->get<string>("deviceUuid"));
   
   git++;
   ASSERT_EQ("TargetRef", (*git)->getName());
@@ -289,7 +289,7 @@ TEST_F(TargetTest, reject_empty_groups)
   const auto doc = R"DOC(
 <Root>
   <Targets>
-    <TargetDevice targetId="device-1234"/>
+    <TargetDevice deviceUuid="device-1234"/>
     <TargetGroup groupId="A">
     </TargetGroup>
   </Targets>
@@ -315,7 +315,7 @@ TEST_F(TargetTest, reject_empty_groups)
   auto it = targets->begin();
   
   ASSERT_EQ("TargetDevice", (*it)->getName());
-  ASSERT_EQ("device-1234", (*it)->get<string>("targetId"));
+  ASSERT_EQ("device-1234", (*it)->get<string>("deviceUuid"));
 }
 
 TEST_F(TargetTest, verify_target_requirement)

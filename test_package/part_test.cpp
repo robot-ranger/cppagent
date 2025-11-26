@@ -30,7 +30,7 @@
 #include "json_helper.hpp"
 #include "mtconnect/agent.hpp"
 #include "mtconnect/asset/asset.hpp"
-#include "mtconnect/asset/process.hpp"
+#include "mtconnect/asset/part.hpp"
 #include "mtconnect/entity/xml_parser.hpp"
 #include "mtconnect/entity/xml_printer.hpp"
 #include "mtconnect/printer//xml_printer_helper.hpp"
@@ -51,13 +51,13 @@ int main(int argc, char *argv[])
   return RUN_ALL_TESTS();
 }
 
-class ProcessAssetTest : public testing::Test
+class PartAssetTest : public testing::Test
 {
 protected:
   void SetUp() override
   {  // Create an agent with only 16 slots and 8 data items.
-    ProcessArchetype::registerAsset();
-    Process::registerAsset();
+    Part::registerAsset();
+    PartArchetype::registerAsset();
     m_writer = make_unique<XmlWriter>(true);
   }
 
@@ -67,42 +67,23 @@ protected:
   std::unique_ptr<AgentTestHelper> m_agentTestHelper;
 };
 
-TEST_F(ProcessAssetTest, should_parse_a_process_archetype)
+TEST_F(PartAssetTest, should_parse_a_part_archetype)
 {
   const auto doc =
-      R"DOC(<ProcessArchetype assetId="PROCESS_ARCH_ID" revision="1">
+      R"DOC(<PartArchetype assetId="PART1234" drawing="STEP222" family="HHH" revision="5">
   <Configuration>
     <Relationships>
-      <AssetRelationship assetIdRef="PART_ID" assetType="PART_ARCHETYPE" id="reference_id" type="PEER"/>
+      <AssetRelationship assetIdRef="MATERIAL" assetType="RawMaterial" id="A" type="PEER"/>
+      <AssetRelationship assetIdRef="PROCESS" assetType="ProcessArchetype" id="B" type="PEER"/>
     </Relationships>
   </Configuration>
-  <Routings>
-    <Routing precedence="1" routingId="routng1">
-      <ProcessStep stepId="10">
-        <Description>Process Step 10</Description>
-        <StartTime>2025-11-24T00:00:00Z</StartTime>
-        <Duration>23000</Duration>
-        <Targets>
-          <TargetRef groupIdRef="group1"/>
-        </Targets>
-        <ActivityGroups>
-          <ActivityGroup activityGroupId="act1">
-            <Activity activityId="a1" sequence="1">
-              <Description>First Activity</Description>
-            </Activity>
-          </ActivityGroup>
-        </ActivityGroups>
-      </ProcessStep>
-    </Routing>
-  </Routings>
-  <Targets>
-    <TargetDevice deviceUuid="device1"/>
-    <TargetGroup groupId="group1">
-      <TargetDevice deviceUuid="device2"/>
-      <TargetDevice deviceUuid="device3"/>
-    </TargetGroup>
-  </Targets>
-</ProcessArchetype>
+  <Customers>
+    <Customer customerId="C00241" name="customer name">
+      <Address>100 Fruitstand Rd, Ork Arkansas, 11111</Address>
+      <Description>Some customer</Description>
+    </Customer>
+  </Customers>
+</PartArchetype>
 )DOC";
 
   ErrorList errors;
@@ -114,100 +95,44 @@ TEST_F(ProcessAssetTest, should_parse_a_process_archetype)
   auto asset = dynamic_cast<Asset *>(entity.get());
   ASSERT_NE(nullptr, asset);
 
-  ASSERT_EQ("ProcessArchetype", asset->getName());
-  ASSERT_EQ("PROCESS_ARCH_ID", asset->getAssetId());
-  ASSERT_EQ("1", asset->get<string>("revision"));
+  ASSERT_EQ("PartArchetype", asset->getName());
+  ASSERT_EQ("PART1234", asset->getAssetId());
+  ASSERT_EQ("5", asset->get<string>("revision"));
+  ASSERT_EQ("STEP222", asset->get<string>("drawing"));
+  ASSERT_EQ("HHH", asset->get<string>("family"));
 
   auto configuration = asset->get<EntityPtr>("Configuration");
   ASSERT_TRUE(configuration);
   
   auto relationships = configuration->getList("Relationships");
   ASSERT_TRUE(relationships);
-  ASSERT_EQ(1, relationships->size());
+  ASSERT_EQ(2, relationships->size());
   
   {
     auto it = relationships->begin();
-    ASSERT_EQ("reference_id", (*it)->get<string>("id"));
-    ASSERT_EQ("PART_ID", (*it)->get<string>("assetIdRef"));
+    ASSERT_EQ("A", (*it)->get<string>("id"));
+    ASSERT_EQ("MATERIAL", (*it)->get<string>("assetIdRef"));
     ASSERT_EQ("PEER", (*it)->get<string>("type"));
-    ASSERT_EQ("PART_ARCHETYPE", (*it)->get<string>("assetType"));
-  }
-  
-  auto routings = asset->getList("Routings");
-  ASSERT_TRUE(routings);
-  ASSERT_EQ(1, routings->size());
-  
-  {
-    auto routing = routings->front();
-    ASSERT_EQ("routng1", routing->get<string>("routingId"));
-    ASSERT_EQ(1, routing->get<int64_t>("precedence"));
-    
-    auto processSteps = routing->get<EntityList>("ProcessStep");
-    ASSERT_EQ(1, processSteps.size());
-    
-    auto step = processSteps.front();
-    ASSERT_EQ("10", step->get<string>("stepId"));
-    ASSERT_EQ("Process Step 10", step->get<string>("Description"));
-    
-    auto st = step->get<Timestamp>("StartTime");
-    ASSERT_EQ("2025-11-24T00:00:00Z", getCurrentTime(st, GMT));
-    ASSERT_EQ(23000, step->get<double>("Duration"));
-    
-    auto targets = step->getList("Targets");
-    ASSERT_TRUE(targets);
-    ASSERT_EQ(1, targets->size());
-    
-    {
-      auto it = targets->begin();
-      ASSERT_EQ("group1", (*it)->get<string>("groupIdRef"));
-    }
-    
-    auto activityGroups = step->getList("ActivityGroups");
-    ASSERT_TRUE(activityGroups);
-    ASSERT_EQ(1, activityGroups->size());
-    
-    {
-      auto it = activityGroups->begin();
-      auto activityGroup = *it;
-      ASSERT_EQ("act1", activityGroup->get<string>("activityGroupId"));
-      
-      auto activities = activityGroup->get<EntityList>("Activity");
-      ASSERT_EQ(1, activities.size());
-      
-      auto activity = activities.front();
-      ASSERT_EQ("a1", activity->get<string>("activityId"));
-      ASSERT_EQ(1, activity->get<int64_t>("sequence"));
-      ASSERT_EQ("First Activity", activity->get<string>("Description"));
-    }
-  }
-  
-  auto targets = asset->getList("Targets");
-  ASSERT_TRUE(targets);
-  ASSERT_EQ(2, targets->size());
-  
-  {
-    auto it = targets->begin();
-    ASSERT_EQ("TargetDevice", (*it)->getName());
-    ASSERT_EQ("device1", (*it)->get<string>("deviceUuid"));
+    ASSERT_EQ("RawMaterial", (*it)->get<string>("assetType"));
     
     it++;
-    auto targetGroup = *it;
-    ASSERT_EQ("TargetGroup", targetGroup->getName());
-    ASSERT_EQ("group1", targetGroup->get<string>("groupId"));
-    
-    auto targetDevices = targetGroup->get<EntityList>("LIST");
-    ASSERT_EQ(2, targetDevices.size());
-    
-    {
-      auto dit = targetDevices.begin();
-      ASSERT_EQ("TargetDevice", (*dit)->getName());
-      ASSERT_EQ("device2", (*dit)->get<string>("deviceUuid"));
-      dit++;
-      ASSERT_EQ("TargetDevice", (*dit)->getName());
-      ASSERT_EQ("device3", (*dit)->get<string>("deviceUuid"));
-    }
+    ASSERT_EQ("B", (*it)->get<string>("id"));
+    ASSERT_EQ("PROCESS", (*it)->get<string>("assetIdRef"));
+    ASSERT_EQ("PEER", (*it)->get<string>("type"));
+    ASSERT_EQ("ProcessArchetype", (*it)->get<string>("assetType"));
   }
   
+  auto customers = asset->getList("Customers");
+  ASSERT_TRUE(customers);
+  ASSERT_EQ(1, customers->size());
+  
+  {
+    auto customer = customers->front();
+    ASSERT_EQ("C00241", customer->get<string>("customerId"));
+    ASSERT_EQ("customer name", customer->get<string>("name"));
+    ASSERT_EQ("100 Fruitstand Rd, Ork Arkansas, 11111", customer->get<string>("Address"));
+    ASSERT_EQ("Some customer", customer->get<string>("Description"));
+  }
   
   // Round trip test
   entity::XmlPrinter printer;
@@ -217,41 +142,24 @@ TEST_F(ProcessAssetTest, should_parse_a_process_archetype)
   ASSERT_EQ(content, doc);
 }
 
-TEST_F(ProcessAssetTest, process_archetype_can_have_multiple_routings)
+
+TEST_F(PartAssetTest, process_archetype_can_have_multiple_customers)
 {
   const auto doc =
-      R"DOC(<ProcessArchetype assetId="PROCESS_ARCH_ID" revision="1">
-  <Configuration>
-    <Relationships>
-      <AssetRelationship assetIdRef="PART_ID" assetType="PART_ARCHETYPE" id="reference_id" type="PEER"/>
-    </Relationships>
-  </Configuration>
-  <Routings>
-    <Routing precedence="1" routingId="routng1">
-      <ProcessStep stepId="10">
-        <Description>Process Step 10</Description>
-        <StartTime>2025-11-24T00:00:00Z</StartTime>
-        <Duration>23000</Duration>
-      </ProcessStep>
-    </Routing>
-    <Routing precedence="2" routingId="routng2">
-      <ProcessStep stepId="11">
-        <Description>Process Step 11</Description>
-        <StartTime>2025-11-25T00:00:00Z</StartTime>
-        <Duration>20000</Duration>
-      </ProcessStep>
-    </Routing>
-  </Routings>
-  <Targets>
-    <TargetDevice deviceUuid="device1"/>
-    <TargetGroup groupId="group1">
-      <TargetDevice deviceUuid="device2"/>
-      <TargetDevice deviceUuid="device3"/>
-    </TargetGroup>
-  </Targets>
-</ProcessArchetype>
+      R"DOC(<PartArchetype assetId="PART1234" drawing="STEP222" family="HHH" revision="5">
+  <Customers>
+    <Customer customerId="C00241" name="customer name">
+      <Address>100 Fruitstand Rd, Ork Arkansas, 11111</Address>
+      <Description>Some customer</Description>
+    </Customer>
+    <Customer customerId="C1111" name="another customer">
+      <Address>Somewhere in Austrailia</Address>
+      <Description>Another customer</Description>
+    </Customer>
+  </Customers>
+</PartArchetype>
 )DOC";
-  
+
   ErrorList errors;
   entity::XmlParser parser;
   
@@ -260,46 +168,28 @@ TEST_F(ProcessAssetTest, process_archetype_can_have_multiple_routings)
   
   auto asset = dynamic_cast<Asset *>(entity.get());
   ASSERT_NE(nullptr, asset);
+  ASSERT_EQ("PartArchetype", asset->getName());
+
+  auto customers = asset->getList("Customers");
+  ASSERT_TRUE(customers);
+  ASSERT_EQ(2, customers->size());
   
-  auto routings = asset->getList("Routings");
-  ASSERT_TRUE(routings);
-  ASSERT_EQ(2, routings->size());
-  
-  auto it = routings->begin();
   {
-    auto routing = *it;
-    ASSERT_EQ("routng1", routing->get<string>("routingId"));
-    ASSERT_EQ(1, routing->get<int64_t>("precedence"));
+    auto it = customers->begin();
+    auto customer = *it;
+    EXPECT_EQ("C00241", customer->get<string>("customerId"));
+    EXPECT_EQ("customer name", customer->get<string>("name"));
+    EXPECT_EQ("100 Fruitstand Rd, Ork Arkansas, 11111", customer->get<string>("Address"));
+    EXPECT_EQ("Some customer", customer->get<string>("Description"));
     
-    auto processSteps = routing->get<EntityList>("ProcessStep");
-    ASSERT_EQ(1, processSteps.size());
-    
-    auto step = processSteps.front();
-    ASSERT_EQ("10", step->get<string>("stepId"));
-    ASSERT_EQ("Process Step 10", step->get<string>("Description"));
-    
-    auto st = step->get<Timestamp>("StartTime");
-    ASSERT_EQ("2025-11-24T00:00:00Z", getCurrentTime(st, GMT));
-    ASSERT_EQ(23000, step->get<double>("Duration"));
+    it++;
+    customer = *it;
+    EXPECT_EQ("C1111", customer->get<string>("customerId"));
+    EXPECT_EQ("another customer", customer->get<string>("name"));
+    EXPECT_EQ("Somewhere in Austrailia", customer->get<string>("Address"));
+    EXPECT_EQ("Another customer", customer->get<string>("Description"));
   }
-  it++;
-  {
-    auto routing = *it;
-    ASSERT_EQ("routng2", routing->get<string>("routingId"));
-    ASSERT_EQ(2, routing->get<int64_t>("precedence"));
-    
-    auto processSteps = routing->get<EntityList>("ProcessStep");
-    ASSERT_EQ(1, processSteps.size());
-    
-    auto step = processSteps.front();
-    ASSERT_EQ("11", step->get<string>("stepId"));
-    ASSERT_EQ("Process Step 11", step->get<string>("Description"));
-    
-    auto st = step->get<Timestamp>("StartTime");
-    ASSERT_EQ("2025-11-25T00:00:00Z", getCurrentTime(st, GMT));
-    ASSERT_EQ(20000, step->get<double>("Duration"));
-  }
-  
+
   // Round trip test
   entity::XmlPrinter printer;
   printer.print(*m_writer, entity, {});
@@ -308,7 +198,8 @@ TEST_F(ProcessAssetTest, process_archetype_can_have_multiple_routings)
   ASSERT_EQ(content, doc);
 }
 
-TEST_F(ProcessAssetTest, process_steps_can_be_optional)
+/*
+TEST_F(PartAssetTest, process_steps_can_be_optional)
 {
   const auto doc =
       R"DOC(<ProcessArchetype assetId="PROCESS_ARCH_ID" revision="1">
@@ -356,15 +247,15 @@ TEST_F(ProcessAssetTest, process_steps_can_be_optional)
   ASSERT_EQ(content, doc);
 }
 
-TEST_F(ProcessAssetTest, process_archetype_must_have_at_least_one_routing)
+TEST_F(PartAssetTest, process_archetype_must_have_at_least_one_routing)
 {
   const auto doc =
       R"DOC(<ProcessArchetype assetId="PROCESS_ARCH_ID" revision="1">
   <Targets>
-    <TargetDevice deviceUuid="device1"/>
+    <TargetDevice targetId="device1"/>
     <TargetGroup groupId="group1">
-      <TargetDevice deviceUuid="device2"/>
-      <TargetDevice deviceUuid="device3"/>
+      <TargetDevice targetId="device2"/>
+      <TargetDevice targetId="device3"/>
     </TargetGroup>
   </Targets>
 </ProcessArchetype>
@@ -382,7 +273,7 @@ TEST_F(ProcessAssetTest, process_archetype_must_have_at_least_one_routing)
   ASSERT_EQ("Routings", error->getProperty());
 }
 
-TEST_F(ProcessAssetTest, process_archetype_routing_must_have_a_process_step)
+TEST_F(PartAssetTest, process_archetype_routing_must_have_a_process_step)
 {
   const auto doc =
       R"DOC(<ProcessArchetype assetId="PROCESS_ARCH_ID" revision="1">
@@ -391,10 +282,10 @@ TEST_F(ProcessAssetTest, process_archetype_routing_must_have_a_process_step)
     </Routing>
   </Routings>
   <Targets>
-    <TargetDevice deviceUuid="device1"/>
+    <TargetDevice targetId="device1"/>
     <TargetGroup groupId="group1">
-      <TargetDevice deviceUuid="device2"/>
-      <TargetDevice deviceUuid="device3"/>
+      <TargetDevice targetId="device2"/>
+      <TargetDevice targetId="device3"/>
     </TargetGroup>
   </Targets>
 </ProcessArchetype>
@@ -451,7 +342,7 @@ TEST_F(ProcessAssetTest, process_archetype_routing_must_have_a_process_step)
   
 }
 
-TEST_F(ProcessAssetTest, activity_can_have_a_sequence_precidence_and_be_options)
+TEST_F(PartAssetTest, activity_can_have_a_sequence_precidence_and_be_options)
 {
   const auto doc =
       R"DOC(<ProcessArchetype assetId="PROCESS_ARCH_ID" revision="1">
@@ -517,7 +408,7 @@ TEST_F(ProcessAssetTest, activity_can_have_a_sequence_precidence_and_be_options)
   ASSERT_EQ(content, doc);
 }
 
-TEST_F(ProcessAssetTest, should_generate_json)
+TEST_F(PartAssetTest, should_generate_json)
 {
   const auto doc =
       R"DOC(<ProcessArchetype assetId="PROCESS_ARCH_ID" revision="1">
@@ -546,10 +437,10 @@ TEST_F(ProcessAssetTest, should_generate_json)
     </Routing>
   </Routings>
   <Targets>
-    <TargetDevice deviceUuid="device1"/>
+    <TargetDevice targetId="device1"/>
     <TargetGroup groupId="group1">
-      <TargetDevice deviceUuid="device2"/>
-      <TargetDevice deviceUuid="device3"/>
+      <TargetDevice targetId="device2"/>
+      <TargetDevice targetId="device3"/>
     </TargetGroup>
   </Targets>
 </ProcessArchetype>
@@ -621,17 +512,17 @@ TEST_F(ProcessAssetTest, should_generate_json)
     "Targets": {
       "TargetDevice": [
         {
-          "deviceUuid": "device1"
+          "targetId": "device1"
         }
       ],
       "TargetGroup": [
         {
           "TargetDevice": [
             {
-              "deviceUuid": "device2"
+              "targetId": "device2"
             },
             {
-              "deviceUuid": "device3"
+              "targetId": "device3"
             }
           ],
           "groupId": "group1"
@@ -644,7 +535,7 @@ TEST_F(ProcessAssetTest, should_generate_json)
 })", sdoc);
 }
 
-TEST_F(ProcessAssetTest, should_parse_and_generate_a_process)
+TEST_F(PartAssetTest, should_parse_and_generate_a_process)
 {
   const auto doc =
       R"DOC(<Process assetId="PROCESS_ARCH_ID" revision="1">
@@ -673,10 +564,10 @@ TEST_F(ProcessAssetTest, should_parse_and_generate_a_process)
     </Routing>
   </Routings>
   <Targets>
-    <TargetDevice deviceUuid="device1"/>
+    <TargetDevice targetId="device1"/>
     <TargetGroup groupId="group1">
-      <TargetDevice deviceUuid="device2"/>
-      <TargetDevice deviceUuid="device3"/>
+      <TargetDevice targetId="device2"/>
+      <TargetDevice targetId="device3"/>
     </TargetGroup>
   </Targets>
 </Process>
@@ -696,7 +587,7 @@ TEST_F(ProcessAssetTest, should_parse_and_generate_a_process)
   ASSERT_EQ(content, doc);
 }
 
-TEST_F(ProcessAssetTest, process_can_only_have_one_routings)
+TEST_F(PartAssetTest, process_can_only_have_one_routings)
 {
   const auto doc =
       R"DOC(<Process assetId="PROCESS_ARCH_ID" revision="1">
@@ -722,10 +613,10 @@ TEST_F(ProcessAssetTest, process_can_only_have_one_routings)
     </Routing>
   </Routings>
   <Targets>
-    <TargetDevice deviceUuid="device1"/>
+    <TargetDevice targetId="device1"/>
     <TargetGroup groupId="group1">
-      <TargetDevice deviceUuid="device2"/>
-      <TargetDevice deviceUuid="device3"/>
+      <TargetDevice targetId="device2"/>
+      <TargetDevice targetId="device3"/>
     </TargetGroup>
   </Targets>
 </Process>
@@ -763,3 +654,4 @@ TEST_F(ProcessAssetTest, process_can_only_have_one_routings)
     EXPECT_EQ("Routings", error->getProperty());
   }
 }
+*/

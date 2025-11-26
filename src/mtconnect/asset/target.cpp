@@ -106,7 +106,7 @@ namespace mtconnect {
       if (!factory)
       {
         factory = make_shared<Factory>(*Target::getFactory());
-        factory->addRequirements({{"targetId", true}});
+        factory->addRequirements({{"deviceUuid", true}});
       }
       
       return factory;
