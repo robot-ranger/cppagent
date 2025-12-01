@@ -24,6 +24,11 @@ namespace mtconnect {
   namespace asset {
     FactoryPtr PartArchetype::getFactory()
     {
+      auto ext = make_shared<Factory>();
+      ext->registerFactory(regex(".+"), ext);
+      ext->setAny(true);
+      ext->setList(true);
+
       static FactoryPtr factory;
       if (!factory)
       {
@@ -42,8 +47,11 @@ namespace mtconnect {
             {"revision", true},
             {"family", false},
             {"drawing", false},
-            {"Customers", ValueType::ENTITY_LIST, customers, true},
+            {"Customers", ValueType::ENTITY_LIST, customers, false},
         });
+        factory->registerFactory(regex(".+"), ext);
+        factory->setAny(true);
+
       }
       return factory;
     }
@@ -63,22 +71,26 @@ namespace mtconnect {
       static FactoryPtr factory;
       if (!factory)
       {
+        auto ext = make_shared<Factory>();
+        ext->registerFactory(regex(".+"), ext);
+        ext->setAny(true);
+        ext->setList(true);
+
         auto identifier = make_shared<Factory>(Requirements {
-            {"type", true}, {"stepIdRef", false}, {"timestamp", ValueType::TIMESTAMP, true}});
+          {"type", ControlledVocab {"UNIQUE_IDENTIFIER", "GROUP_IDENTIFIER"}, true},
+          {"stepIdRef", false}, {"timestamp", ValueType::TIMESTAMP, true}, {"VALUE", true}});
 
         auto identifiers = make_shared<Factory>(Requirements {
-            {"UniqueIdentitier", ValueType::ENTITY, identifier, 0, entity::Requirement::Infinite},
-            {"GroupIdentifier", ValueType::ENTITY, identifier, 0, entity::Requirement::Infinite}});
-
-        identifiers->setMinListSize(1);
-        identifiers->registerMatchers();
+          {"Identifier", ValueType::ENTITY, identifier, 1, entity::Requirement::Infinite}});
 
         factory = make_shared<Factory>(*Asset::getFactory());
         factory->addRequirements({{"revision", true},
                                   {"family", false},
                                   {"drawing", false},
                                   {"PartIdentifiers", ValueType::ENTITY_LIST, identifiers, false}});
-      }
+        factory->registerFactory(regex(".+"), ext);
+        factory->setAny(true);
+     }
       return factory;
     }
 

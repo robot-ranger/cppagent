@@ -67,6 +67,8 @@ protected:
   std::unique_ptr<AgentTestHelper> m_agentTestHelper;
 };
 
+/// @section PartArchetype tests
+
 TEST_F(PartAssetTest, should_parse_a_part_archetype)
 {
   const auto doc =
@@ -197,21 +199,10 @@ TEST_F(PartAssetTest, process_archetype_can_have_multiple_customers)
   ASSERT_EQ(content, doc);
 }
 
-/*
-TEST_F(PartAssetTest, process_steps_can_be_optional)
+TEST_F(PartAssetTest, customers_are_optional)
 {
   const auto doc =
-      R"DOC(<ProcessArchetype assetId="PROCESS_ARCH_ID" revision="1">
-  <Routings>
-    <Routing precedence="1" routingId="routng1">
-      <ProcessStep optional="true" sequence="5" stepId="10">
-        <Description>Process Step 10</Description>
-        <StartTime>2025-11-24T00:00:00Z</StartTime>
-        <Duration>23000</Duration>
-      </ProcessStep>
-    </Routing>
-  </Routings>
-</ProcessArchetype>
+      R"DOC(<PartArchetype assetId="PART1234" drawing="STEP222" family="HHH" revision="5"/>
 )DOC";
 
   ErrorList errors;
@@ -223,181 +214,11 @@ TEST_F(PartAssetTest, process_steps_can_be_optional)
   auto asset = dynamic_cast<Asset *>(entity.get());
   ASSERT_NE(nullptr, asset);
 
-  auto routings = asset->getList("Routings");
-  ASSERT_TRUE(routings);
-  ASSERT_EQ(1, routings->size());
-
-  auto routing = routings->front();
-  ASSERT_EQ("routng1", routing->get<string>("routingId"));
-
-  auto processSteps = routing->get<EntityList>("ProcessStep");
-  ASSERT_EQ(1, processSteps.size());
-  auto step = processSteps.front();
-
-  ASSERT_EQ("10", step->get<string>("stepId"));
-  ASSERT_EQ(5, step->get<int64_t>("sequence"));
-  ASSERT_EQ(true, step->get<bool>("optional"));
-
-  // Round trip test
-  entity::XmlPrinter printer;
-  printer.print(*m_writer, entity, {});
-
-  string content = m_writer->getContent();
-  ASSERT_EQ(content, doc);
-}
-
-TEST_F(PartAssetTest, process_archetype_must_have_at_least_one_routing)
-{
-  const auto doc =
-      R"DOC(<ProcessArchetype assetId="PROCESS_ARCH_ID" revision="1">
-  <Targets>
-    <TargetDevice targetId="device1"/>
-    <TargetGroup groupId="group1">
-      <TargetDevice targetId="device2"/>
-      <TargetDevice targetId="device3"/>
-    </TargetGroup>
-  </Targets>
-</ProcessArchetype>
-)DOC";
-
-  ErrorList errors;
-  entity::XmlParser parser;
-
-  auto entity = parser.parse(Asset::getRoot(), doc, errors);
-  ASSERT_EQ(1, errors.size());
-  auto error = dynamic_cast<PropertyError*>(errors.front().get());
-
-  ASSERT_EQ("ProcessArchetype(Routings): Property Routings is required and not provided"s,
-error->what()); ASSERT_EQ("ProcessArchetype", error->getEntity()); ASSERT_EQ("Routings",
-error->getProperty());
-}
-
-TEST_F(PartAssetTest, process_archetype_routing_must_have_a_process_step)
-{
-  const auto doc =
-      R"DOC(<ProcessArchetype assetId="PROCESS_ARCH_ID" revision="1">
-  <Routings>
-    <Routing precedence="1" routingId="routng1">
-    </Routing>
-  </Routings>
-  <Targets>
-    <TargetDevice targetId="device1"/>
-    <TargetGroup groupId="group1">
-      <TargetDevice targetId="device2"/>
-      <TargetDevice targetId="device3"/>
-    </TargetGroup>
-  </Targets>
-</ProcessArchetype>
-)DOC";
-
-  ErrorList errors;
-  entity::XmlParser parser;
-
-  auto entity = parser.parse(Asset::getRoot(), doc, errors);
-  ASSERT_EQ(5, errors.size());
-
-  auto it = errors.begin();
-  {
-    auto error = dynamic_cast<PropertyError*>(it->get());
-    ASSERT_TRUE(error);
-    EXPECT_EQ("Routing(ProcessStep): Property ProcessStep is required and not provided"s,
-error->what()); EXPECT_EQ("Routing", error->getEntity()); EXPECT_EQ("ProcessStep",
-error->getProperty());
-  }
-
-  it++;
-  {
-    auto error = it->get();
-    ASSERT_TRUE(error);
-    EXPECT_EQ("Routings: Invalid element 'Routing'"s, error->what());
-    EXPECT_EQ("Routings", error->getEntity());
-  }
-
-  it++;
-  {
-    auto error = dynamic_cast<PropertyError*>(it->get());
-    ASSERT_TRUE(error);
-    EXPECT_EQ("Routings(Routing): Entity list requirement Routing must have at least 1 entries, 0
-found"s, error->what()); EXPECT_EQ("Routings", error->getEntity()); EXPECT_EQ("Routing",
-error->getProperty());
-  }
-
-  it++;
-  {
-    auto error = it->get();
-    ASSERT_TRUE(error);
-    EXPECT_EQ("ProcessArchetype: Invalid element 'Routings'"s, error->what());
-    EXPECT_EQ("ProcessArchetype", error->getEntity());
-  }
-
-  it++;
-  {
-    auto error = dynamic_cast<PropertyError*>(it->get());
-    ASSERT_TRUE(error);
-    EXPECT_EQ("ProcessArchetype(Routings): Property Routings is required and not provided"s,
-error->what()); EXPECT_EQ("ProcessArchetype", error->getEntity()); EXPECT_EQ("Routings",
-error->getProperty());
-  }
-
-}
-
-TEST_F(PartAssetTest, activity_can_have_a_sequence_precidence_and_be_options)
-{
-  const auto doc =
-      R"DOC(<ProcessArchetype assetId="PROCESS_ARCH_ID" revision="1">
-  <Routings>
-    <Routing precedence="1" routingId="routng1">
-      <ProcessStep optional="true" sequence="5" stepId="10">
-        <ActivityGroups>
-          <ActivityGroup activityGroupId="act1" name="fred">
-            <Activity activityId="a1" optional="true" precedence="3" sequence="2">
-              <Description>First Activity</Description>
-            </Activity>
-          </ActivityGroup>
-        </ActivityGroups>
-      </ProcessStep>
-    </Routing>
-  </Routings>
-</ProcessArchetype>
-)DOC";
-
-  ErrorList errors;
-  entity::XmlParser parser;
-
-  auto entity = parser.parse(Asset::getRoot(), doc, errors);
-  ASSERT_EQ(0, errors.size());
-
-  auto asset = dynamic_cast<Asset *>(entity.get());
-  ASSERT_NE(nullptr, asset);
-
-  auto routings = asset->getList("Routings");
-  ASSERT_TRUE(routings);
-  ASSERT_EQ(1, routings->size());
-
-  auto routing = routings->front();
-  ASSERT_EQ("routng1", routing->get<string>("routingId"));
-
-  auto processSteps = routing->get<EntityList>("ProcessStep");
-  ASSERT_EQ(1, processSteps.size());
-  auto step = processSteps.front();
-
-  auto activityGroups = step->getList("ActivityGroups");
-  ASSERT_TRUE(activityGroups);
-  ASSERT_EQ(1, activityGroups->size());
-
-  auto activityGroup = activityGroups->front();
-  ASSERT_EQ("act1", activityGroup->get<string>("activityGroupId"));
-  ASSERT_EQ("fred", activityGroup->get<string>("name"));
-
-  auto activities = activityGroup->get<EntityList>("Activity");
-  ASSERT_EQ(1, activities.size());
-
-  auto activity = activities.front();
-  ASSERT_EQ("a1", activity->get<string>("activityId"));
-  ASSERT_EQ(2, activity->get<int64_t>("sequence"));
-  ASSERT_EQ("First Activity", activity->get<string>("Description"));
-  ASSERT_EQ(true, activity->get<bool>("optional"));
-  ASSERT_EQ(3, activity->get<int64_t>("precedence"));
+  ASSERT_EQ("PartArchetype", asset->getName());
+  ASSERT_EQ("PART1234", asset->getAssetId());
+  ASSERT_EQ("5", asset->get<string>("revision"));
+  ASSERT_EQ("STEP222", asset->get<string>("drawing"));
+  ASSERT_EQ("HHH", asset->get<string>("family"));
 
   // Round trip test
   entity::XmlPrinter printer;
@@ -410,250 +231,406 @@ TEST_F(PartAssetTest, activity_can_have_a_sequence_precidence_and_be_options)
 TEST_F(PartAssetTest, should_generate_json)
 {
   const auto doc =
-      R"DOC(<ProcessArchetype assetId="PROCESS_ARCH_ID" revision="1">
+      R"DOC(<PartArchetype assetId="PART1234" drawing="STEP222" family="HHH" revision="5">
   <Configuration>
     <Relationships>
-      <AssetRelationship assetIdRef="PART_ID" assetType="PART_ARCHETYPE" id="reference_id"
-type="PEER"/>
+      <AssetRelationship assetIdRef="MATERIAL" assetType="RawMaterial" id="A" type="PEER"/>
+      <AssetRelationship assetIdRef="PROCESS" assetType="ProcessArchetype" id="B" type="PEER"/>
     </Relationships>
   </Configuration>
-  <Routings>
-    <Routing precedence="1" routingId="routng1">
-      <ProcessStep stepId="10">
-        <Description>Process Step 10</Description>
-        <StartTime>2025-11-24T00:00:00Z</StartTime>
-        <Duration>23000</Duration>
-        <Targets>
-          <TargetRef groupIdRef="group1"/>
-        </Targets>
-        <ActivityGroups>
-          <ActivityGroup activityGroupId="act1" name="fred">
-            <Activity activityId="a1" sequence="1" optional="true" precedence="2">
-              <Description>First Activity</Description>
-            </Activity>
-          </ActivityGroup>
-        </ActivityGroups>
-      </ProcessStep>
-    </Routing>
-  </Routings>
-  <Targets>
-    <TargetDevice targetId="device1"/>
-    <TargetGroup groupId="group1">
-      <TargetDevice targetId="device2"/>
-      <TargetDevice targetId="device3"/>
-    </TargetGroup>
-  </Targets>
-</ProcessArchetype>
+  <Customers>
+    <Customer customerId="C00241" name="customer name">
+      <Address>100 Fruitstand Rd, Ork Arkansas, 11111</Address>
+      <Description>Some customer</Description>
+    </Customer>
+  </Customers>
+</PartArchetype>
 )DOC";
-
+  
   ErrorList errors;
   entity::XmlParser parser;
-
+  
   auto entity = parser.parse(Asset::getRoot(), doc, errors);
   ASSERT_EQ(0, errors.size());
-
+  
+  auto asset = dynamic_cast<Asset *>(entity.get());
+  ASSERT_NE(nullptr, asset);
+  
+  ASSERT_EQ("PartArchetype", asset->getName());
+  
+  // Round trip test
   entity::JsonEntityPrinter jprinter(2, true);
-
-  auto sdoc = jprinter.print(entity);
+  
+  auto jdoc = jprinter.print(entity);
   EXPECT_EQ(R"({
-  "ProcessArchetype": {
+  "PartArchetype": {
     "Configuration": {
       "Relationships": {
         "AssetRelationship": [
           {
-            "assetIdRef": "PART_ID",
-            "assetType": "PART_ARCHETYPE",
-            "id": "reference_id",
+            "assetIdRef": "MATERIAL",
+            "assetType": "RawMaterial",
+            "id": "A",
+            "type": "PEER"
+          },
+          {
+            "assetIdRef": "PROCESS",
+            "assetType": "ProcessArchetype",
+            "id": "B",
             "type": "PEER"
           }
         ]
       }
     },
-    "Routings": {
-      "Routing": [
+    "Customers": {
+      "Customer": [
         {
-          "ProcessStep": [
-            {
-              "ActivityGroups": {
-                "ActivityGroup": [
-                  {
-                    "Activity": [
-                      {
-                        "Description": "First Activity",
-                        "activityId": "a1",
-                        "optional": true,
-                        "precedence": 2,
-                        "sequence": 1
-                      }
-                    ],
-                    "activityGroupId": "act1",
-                    "name": "fred"
-                  }
-                ]
-              },
-              "Description": "Process Step 10",
-              "Duration": 23000.0,
-              "StartTime": "2025-11-24T00:00:00Z",
-              "Targets": {
-                "TargetRef": [
-                  {
-                    "groupIdRef": "group1"
-                  }
-                ]
-              },
-              "stepId": "10"
-            }
-          ],
-          "precedence": 1,
-          "routingId": "routng1"
+          "Address": "100 Fruitstand Rd, Ork Arkansas, 11111",
+          "Description": "Some customer",
+          "customerId": "C00241",
+          "name": "customer name"
         }
       ]
     },
-    "Targets": {
-      "TargetDevice": [
-        {
-          "targetId": "device1"
-        }
-      ],
-      "TargetGroup": [
-        {
-          "TargetDevice": [
-            {
-              "targetId": "device2"
-            },
-            {
-              "targetId": "device3"
-            }
-          ],
-          "groupId": "group1"
-        }
-      ]
-    },
-    "assetId": "PROCESS_ARCH_ID",
-    "revision": "1"
+    "assetId": "PART1234",
+    "drawing": "STEP222",
+    "family": "HHH",
+    "revision": "5"
   }
-})", sdoc);
+})", jdoc);
 }
 
-TEST_F(PartAssetTest, should_parse_and_generate_a_process)
+TEST_F(PartAssetTest, part_archetype_should_be_extensible)
 {
   const auto doc =
-      R"DOC(<Process assetId="PROCESS_ARCH_ID" revision="1">
+      R"DOC(<PartArchetype assetId="PART1234" drawing="STEP222" family="HHH" revision="5">
   <Configuration>
     <Relationships>
-      <AssetRelationship assetIdRef="PART_ID" assetType="PART_ARCHETYPE" id="reference_id"
-type="PEER"/>
+      <AssetRelationship assetIdRef="MATERIAL" assetType="RawMaterial" id="A" type="PEER"/>
+      <AssetRelationship assetIdRef="PROCESS" assetType="ProcessArchetype" id="B" type="PEER"/>
     </Relationships>
   </Configuration>
-  <Routings>
-    <Routing precedence="1" routingId="routng1">
-      <ProcessStep stepId="10">
-        <Description>Process Step 10</Description>
-        <StartTime>2025-11-24T00:00:00Z</StartTime>
-        <Duration>23000</Duration>
-        <Targets>
-          <TargetRef groupIdRef="group1"/>
-        </Targets>
-        <ActivityGroups>
-          <ActivityGroup activityGroupId="act1">
-            <Activity activityId="a1" sequence="1">
-              <Description>First Activity</Description>
-            </Activity>
-          </ActivityGroup>
-        </ActivityGroups>
-      </ProcessStep>
-    </Routing>
-  </Routings>
-  <Targets>
-    <TargetDevice targetId="device1"/>
-    <TargetGroup groupId="group1">
-      <TargetDevice targetId="device2"/>
-      <TargetDevice targetId="device3"/>
-    </TargetGroup>
-  </Targets>
-</Process>
+  <Customers>
+    <Customer customerId="C00241" name="customer name">
+      <Address>100 Fruitstand Rd, Ork Arkansas, 11111</Address>
+      <Description>Some customer</Description>
+    </Customer>
+  </Customers>
+  <Properties>
+    <Property name="CustomProperty1" value="Value1"/>
+    <Property name="CustomProperty2" value="Value2"/>
+  </Properties>
+  <SimpleExtension>Some simple extension value</SimpleExtension>
+</PartArchetype>
 )DOC";
-
+  
   ErrorList errors;
   entity::XmlParser parser;
-
+  
   auto entity = parser.parse(Asset::getRoot(), doc, errors);
   ASSERT_EQ(0, errors.size());
+  
+  auto asset = dynamic_cast<Asset *>(entity.get());
+  ASSERT_NE(nullptr, asset);
+  
+  ASSERT_EQ("PartArchetype", asset->getName());
+  
+  auto properties = asset->getList("Properties");
+  ASSERT_TRUE(properties);
+  
+  ASSERT_EQ(2, properties->size());
+  {
+    auto it = properties->begin();
+    EXPECT_EQ("CustomProperty1", (*it)->get<string>("name"));
+    EXPECT_EQ("Value1", (*it)->get<string>("value"));
+    it++;
+    EXPECT_EQ("CustomProperty2", (*it)->get<string>("name"));
+    EXPECT_EQ("Value2", (*it)->get<string>("value"));
+  }
 
+  
+  auto sext = asset->get<string>("SimpleExtension");
+  ASSERT_EQ("Some simple extension value", sext);
+}
+
+/// @section Part asset tests
+
+TEST_F(PartAssetTest, should_parse_a_part)
+{
+  const auto doc =
+      R"DOC(<Part assetId="PART1234" drawing="STEP222" family="HHH" nativeId="NATIVE001" revision="5">
+  <Configuration>
+    <Relationships>
+      <AssetRelationship assetIdRef="MATERIAL" assetType="RawMaterial" id="A" type="PEER"/>
+      <AssetRelationship assetIdRef="PROCESS" assetType="ProcessArchetype" id="B" type="PEER"/>
+    </Relationships>
+  </Configuration>
+  <PartIdentifiers>
+    <Identifier stepIdRef="10" timestamp="2025-11-28T00:01:00Z" type="UNIQUE_IDENTIFIER">UID123456</Identifier>
+    <Identifier stepIdRef="11" timestamp="2025-11-28T00:02:00Z" type="GROUP_IDENTIFIER">GID1235</Identifier>
+  </PartIdentifiers>
+</Part>
+)DOC";
+  
+  ErrorList errors;
+  entity::XmlParser parser;
+  
+  auto entity = parser.parse(Asset::getRoot(), doc, errors);
+  ASSERT_EQ(0, errors.size());
+  
+  auto asset = dynamic_cast<Asset *>(entity.get());
+  ASSERT_NE(nullptr, asset);
+  
+  ASSERT_EQ("Part", asset->getName());
+  EXPECT_EQ("PART1234", asset->getAssetId());
+  EXPECT_EQ("5", asset->get<string>("revision"));
+  EXPECT_EQ("STEP222", asset->get<string>("drawing"));
+  EXPECT_EQ("HHH", asset->get<string>("family"));
+  EXPECT_EQ("NATIVE001", asset->get<string>("nativeId"));
+  
+  auto configuration = asset->get<EntityPtr>("Configuration");
+  ASSERT_TRUE(configuration);
+  
+  auto relationships = configuration->getList("Relationships");
+  ASSERT_TRUE(relationships);
+  ASSERT_EQ(2, relationships->size());
+  
+  {
+    auto it = relationships->begin();
+    EXPECT_EQ("A", (*it)->get<string>("id"));
+    EXPECT_EQ("MATERIAL", (*it)->get<string>("assetIdRef"));
+    EXPECT_EQ("PEER", (*it)->get<string>("type"));
+    EXPECT_EQ("RawMaterial", (*it)->get<string>("assetType"));
+    
+    it++;
+    EXPECT_EQ("B", (*it)->get<string>("id"));
+    EXPECT_EQ("PROCESS", (*it)->get<string>("assetIdRef"));
+    EXPECT_EQ("PEER", (*it)->get<string>("type"));
+    EXPECT_EQ("ProcessArchetype", (*it)->get<string>("assetType"));
+  }
+  
+  auto identifiers = asset->getList("PartIdentifiers");
+  ASSERT_TRUE(identifiers);
+  ASSERT_EQ(2, identifiers->size());
+  
+  {
+    auto it = identifiers->begin();
+    auto identifier = *it;
+    EXPECT_EQ("UNIQUE_IDENTIFIER", identifier->get<string>("type"));
+    EXPECT_EQ("10", identifier->get<string>("stepIdRef"));
+    auto st = identifier->get<Timestamp>("timestamp");
+    EXPECT_EQ("2025-11-28T00:01:00Z", getCurrentTime(st, GMT));
+    EXPECT_EQ("UID123456", identifier->getValue<string>());
+    
+    it++;
+    identifier = *it;
+    EXPECT_EQ("GROUP_IDENTIFIER", identifier->get<string>("type"));
+    EXPECT_EQ("11", identifier->get<string>("stepIdRef"));
+    st = identifier->get<Timestamp>("timestamp");
+    EXPECT_EQ("2025-11-28T00:02:00Z", getCurrentTime(st, GMT));
+    EXPECT_EQ("GID1235", identifier->getValue<string>());
+  }
+  
   // Round trip test
   entity::XmlPrinter printer;
   printer.print(*m_writer, entity, {});
-
+  
   string content = m_writer->getContent();
   ASSERT_EQ(content, doc);
 }
 
-TEST_F(PartAssetTest, process_can_only_have_one_routings)
+TEST_F(PartAssetTest, part_identifiers_are_optional)
 {
   const auto doc =
-      R"DOC(<Process assetId="PROCESS_ARCH_ID" revision="1">
-  <Configuration>
-    <Relationships>
-      <AssetRelationship assetIdRef="PART_ID" assetType="PART_ARCHETYPE" id="reference_id"
-type="PEER"/>
-    </Relationships>
-  </Configuration>
-  <Routings>
-    <Routing precedence="1" routingId="routng1">
-      <ProcessStep stepId="10">
-        <Description>Process Step 10</Description>
-        <StartTime>2025-11-24T00:00:00Z</StartTime>
-        <Duration>23000</Duration>
-      </ProcessStep>
-    </Routing>
-    <Routing precedence="2" routingId="routng2">
-      <ProcessStep stepId="11">
-        <Description>Process Step 11</Description>
-        <StartTime>2025-11-25T00:00:00Z</StartTime>
-        <Duration>20000</Duration>
-      </ProcessStep>
-    </Routing>
-  </Routings>
-  <Targets>
-    <TargetDevice targetId="device1"/>
-    <TargetGroup groupId="group1">
-      <TargetDevice targetId="device2"/>
-      <TargetDevice targetId="device3"/>
-    </TargetGroup>
-  </Targets>
-</Process>
+      R"DOC(<Part assetId="PART1234" drawing="STEP222" family="HHH" nativeId="NATIVE001" revision="5"/>
 )DOC";
-
+  
   ErrorList errors;
   entity::XmlParser parser;
-
+  
   auto entity = parser.parse(Asset::getRoot(), doc, errors);
-  ASSERT_EQ(3, errors.size());
+  ASSERT_EQ(0, errors.size());
+  
+  auto asset = dynamic_cast<Asset *>(entity.get());
+  ASSERT_NE(nullptr, asset);
+  
+  ASSERT_EQ("Part", asset->getName());
+  EXPECT_EQ("PART1234", asset->getAssetId());
+  EXPECT_EQ("5", asset->get<string>("revision"));
+  EXPECT_EQ("STEP222", asset->get<string>("drawing"));
+  EXPECT_EQ("HHH", asset->get<string>("family"));
+  EXPECT_EQ("NATIVE001", asset->get<string>("nativeId"));
+  
+  // Round trip test
+  entity::XmlPrinter printer;
+  printer.print(*m_writer, entity, {});
+  
+  string content = m_writer->getContent();
+  ASSERT_EQ(content, doc);
+}
 
+TEST_F(PartAssetTest, part_identifiers_type_must_be_unique_or_group)
+{
+  const auto doc =
+      R"DOC(<Part assetId="PART1234" drawing="STEP222" family="HHH" nativeId="NATIVE001" revision="5">
+  <PartIdentifiers>
+    <Identifier stepIdRef="10" timestamp="2025-11-28T00:01:00Z" type="UNIQUE_IDENTIFIER">UID123456</Identifier>
+    <Identifier stepIdRef="11" timestamp="2025-11-28T00:02:00Z" type="OTHER_IDENTIFIER">GID1235</Identifier>
+  </PartIdentifiers>
+</Part>
+)DOC";
+  
+  ErrorList errors;
+  entity::XmlParser parser;
+  
+  auto entity = parser.parse(Asset::getRoot(), doc, errors);
+  ASSERT_EQ(2, errors.size());
+  
   auto it = errors.begin();
   {
-    auto error = dynamic_cast<PropertyError*>(it->get());
+    auto error = dynamic_cast<PropertyError *>(it->get());
     ASSERT_TRUE(error);
-    EXPECT_EQ("Routings(Routing): Entity list requirement Routing must have at least 1 and no more
-than 1 entries, 2 found"s, error->what()); EXPECT_EQ("Routings", error->getEntity());
-    EXPECT_EQ("Routing", error->getProperty());
+    EXPECT_EQ(
+              "Identifier(type): Invalid value for 'type': 'OTHER_IDENTIFIER' is not allowed"s,
+              error->what());
+    EXPECT_EQ("Identifier", error->getEntity());
+    EXPECT_EQ("type", error->getProperty());
   }
-
+  
   it++;
   {
     auto error = it->get();
     ASSERT_TRUE(error);
-    EXPECT_EQ("Process: Invalid element 'Routings'"s, error->what());
-    EXPECT_EQ("Process", error->getEntity());
+    EXPECT_EQ("PartIdentifiers: Invalid element 'Identifier'"s, error->what());
+    EXPECT_EQ("PartIdentifiers", error->getEntity());
   }
 
-  it++;
-  {
-    auto error = dynamic_cast<PropertyError*>(it->get());
-    ASSERT_TRUE(error);
-    EXPECT_EQ("Process(Routings): Property Routings is required and not provided"s, error->what());
-    EXPECT_EQ("Process", error->getEntity());
-    EXPECT_EQ("Routings", error->getProperty());
-  }
 }
-*/
+
+TEST_F(PartAssetTest, part_should_be_extensible)
+{
+  const auto doc =
+      R"DOC(<Part assetId="PART1234" drawing="STEP222" family="HHH" nativeId="NATIVE001" revision="5">
+  <Configuration>
+    <Relationships>
+      <AssetRelationship assetIdRef="MATERIAL" assetType="RawMaterial" id="A" type="PEER"/>
+      <AssetRelationship assetIdRef="PROCESS" assetType="ProcessArchetype" id="B" type="PEER"/>
+    </Relationships>
+  </Configuration>
+  <PartIdentifiers>
+    <Identifier stepIdRef="10" timestamp="2025-11-28T00:01:00Z" type="UNIQUE_IDENTIFIER">UID123456</Identifier>
+    <Identifier stepIdRef="11" timestamp="2025-11-28T00:02:00Z" type="GROUP_IDENTIFIER">GID1235</Identifier>
+  </PartIdentifiers>
+  <WorkOrder number="WO12345">
+    <OrderDate>2025-12-01T00:00:00Z</OrderDate>
+    <DueDate>2025-12-20T00:00:00Z</DueDate>
+    <PlannedQuantity>100</PlannedQuantity>
+  </WorkOrder>
+</Part>
+)DOC";
+  
+  ErrorList errors;
+  entity::XmlParser parser;
+  
+  auto entity = parser.parse(Asset::getRoot(), doc, errors);
+  ASSERT_EQ(0, errors.size());
+  
+  auto asset = dynamic_cast<Asset *>(entity.get());
+  ASSERT_NE(nullptr, asset);
+  
+  auto workOrder = asset->get<EntityPtr>("WorkOrder");
+  ASSERT_TRUE(workOrder);
+  
+  ASSERT_EQ("WO12345", workOrder->get<string>("number"));
+  ASSERT_EQ("2025-12-01T00:00:00Z", workOrder->get<string>("OrderDate"));
+  ASSERT_EQ("2025-12-20T00:00:00Z", workOrder->get<string>("DueDate"));
+  ASSERT_EQ("100", workOrder->get<string>("PlannedQuantity"));
+}
+
+TEST_F(PartAssetTest, part_should_generate_json)
+{
+  const auto doc =
+      R"DOC(<Part assetId="PART1234" drawing="STEP222" family="HHH" nativeId="NATIVE001" revision="5">
+  <Configuration>
+    <Relationships>
+      <AssetRelationship assetIdRef="MATERIAL" assetType="RawMaterial" id="A" type="PEER"/>
+      <AssetRelationship assetIdRef="PROCESS" assetType="ProcessArchetype" id="B" type="PEER"/>
+    </Relationships>
+  </Configuration>
+  <PartIdentifiers>
+    <Identifier stepIdRef="10" timestamp="2025-11-28T00:01:00Z" type="UNIQUE_IDENTIFIER">UID123456</Identifier>
+    <Identifier stepIdRef="11" timestamp="2025-11-28T00:02:00Z" type="GROUP_IDENTIFIER">GID1235</Identifier>
+  </PartIdentifiers>
+  <WorkOrder number="WO12345">
+    <OrderDate>2025-12-01T00:00:00Z</OrderDate>
+    <DueDate>2025-12-20T00:00:00Z</DueDate>
+    <PlannedQuantity>100</PlannedQuantity>
+  </WorkOrder>
+</Part>
+)DOC";
+  
+  ErrorList errors;
+  entity::XmlParser parser;
+  
+  auto entity = parser.parse(Asset::getRoot(), doc, errors);
+  ASSERT_EQ(0, errors.size());
+  
+  auto asset = dynamic_cast<Asset *>(entity.get());
+  ASSERT_NE(nullptr, asset);
+  
+  // Round trip test
+  entity::JsonEntityPrinter jprinter(2, true);
+  
+  auto jdoc = jprinter.print(entity);
+  EXPECT_EQ(R"({
+  "Part": {
+    "Configuration": {
+      "Relationships": {
+        "AssetRelationship": [
+          {
+            "assetIdRef": "MATERIAL",
+            "assetType": "RawMaterial",
+            "id": "A",
+            "type": "PEER"
+          },
+          {
+            "assetIdRef": "PROCESS",
+            "assetType": "ProcessArchetype",
+            "id": "B",
+            "type": "PEER"
+          }
+        ]
+      }
+    },
+    "PartIdentifiers": {
+      "Identifier": [
+        {
+          "value": "UID123456",
+          "stepIdRef": "10",
+          "timestamp": "2025-11-28T00:01:00Z",
+          "type": "UNIQUE_IDENTIFIER"
+        },
+        {
+          "value": "GID1235",
+          "stepIdRef": "11",
+          "timestamp": "2025-11-28T00:02:00Z",
+          "type": "GROUP_IDENTIFIER"
+        }
+      ]
+    },
+    "WorkOrder": {
+      "DueDate": "2025-12-20T00:00:00Z",
+      "OrderDate": "2025-12-01T00:00:00Z",
+      "PlannedQuantity": "100",
+      "number": "WO12345"
+    },
+    "assetId": "PART1234",
+    "drawing": "STEP222",
+    "family": "HHH",
+    "nativeId": "NATIVE001",
+    "revision": "5"
+  }
+})", jdoc);
+  
+}
+
