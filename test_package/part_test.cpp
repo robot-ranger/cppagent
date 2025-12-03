@@ -246,21 +246,21 @@ TEST_F(PartAssetTest, should_generate_json)
   </Customers>
 </PartArchetype>
 )DOC";
-  
+
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(Asset::getRoot(), doc, errors);
   ASSERT_EQ(0, errors.size());
-  
+
   auto asset = dynamic_cast<Asset *>(entity.get());
   ASSERT_NE(nullptr, asset);
-  
+
   ASSERT_EQ("PartArchetype", asset->getName());
-  
+
   // Round trip test
   entity::JsonEntityPrinter jprinter(2, true);
-  
+
   auto jdoc = jprinter.print(entity);
   EXPECT_EQ(R"({
   "PartArchetype": {
@@ -297,7 +297,8 @@ TEST_F(PartAssetTest, should_generate_json)
     "family": "HHH",
     "revision": "5"
   }
-})", jdoc);
+})",
+            jdoc);
 }
 
 TEST_F(PartAssetTest, part_archetype_should_be_extensible)
@@ -323,21 +324,21 @@ TEST_F(PartAssetTest, part_archetype_should_be_extensible)
   <SimpleExtension>Some simple extension value</SimpleExtension>
 </PartArchetype>
 )DOC";
-  
+
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(Asset::getRoot(), doc, errors);
   ASSERT_EQ(0, errors.size());
-  
+
   auto asset = dynamic_cast<Asset *>(entity.get());
   ASSERT_NE(nullptr, asset);
-  
+
   ASSERT_EQ("PartArchetype", asset->getName());
-  
+
   auto properties = asset->getList("Properties");
   ASSERT_TRUE(properties);
-  
+
   ASSERT_EQ(2, properties->size());
   {
     auto it = properties->begin();
@@ -348,7 +349,6 @@ TEST_F(PartAssetTest, part_archetype_should_be_extensible)
     EXPECT_EQ("Value2", (*it)->get<string>("value"));
   }
 
-  
   auto sext = asset->get<string>("SimpleExtension");
   ASSERT_EQ("Some simple extension value", sext);
 }
@@ -371,48 +371,48 @@ TEST_F(PartAssetTest, should_parse_a_part)
   </PartIdentifiers>
 </Part>
 )DOC";
-  
+
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(Asset::getRoot(), doc, errors);
   ASSERT_EQ(0, errors.size());
-  
+
   auto asset = dynamic_cast<Asset *>(entity.get());
   ASSERT_NE(nullptr, asset);
-  
+
   ASSERT_EQ("Part", asset->getName());
   EXPECT_EQ("PART1234", asset->getAssetId());
   EXPECT_EQ("5", asset->get<string>("revision"));
   EXPECT_EQ("STEP222", asset->get<string>("drawing"));
   EXPECT_EQ("HHH", asset->get<string>("family"));
   EXPECT_EQ("NATIVE001", asset->get<string>("nativeId"));
-  
+
   auto configuration = asset->get<EntityPtr>("Configuration");
   ASSERT_TRUE(configuration);
-  
+
   auto relationships = configuration->getList("Relationships");
   ASSERT_TRUE(relationships);
   ASSERT_EQ(2, relationships->size());
-  
+
   {
     auto it = relationships->begin();
     EXPECT_EQ("A", (*it)->get<string>("id"));
     EXPECT_EQ("MATERIAL", (*it)->get<string>("assetIdRef"));
     EXPECT_EQ("PEER", (*it)->get<string>("type"));
     EXPECT_EQ("RawMaterial", (*it)->get<string>("assetType"));
-    
+
     it++;
     EXPECT_EQ("B", (*it)->get<string>("id"));
     EXPECT_EQ("PROCESS", (*it)->get<string>("assetIdRef"));
     EXPECT_EQ("PEER", (*it)->get<string>("type"));
     EXPECT_EQ("ProcessArchetype", (*it)->get<string>("assetType"));
   }
-  
+
   auto identifiers = asset->getList("PartIdentifiers");
   ASSERT_TRUE(identifiers);
   ASSERT_EQ(2, identifiers->size());
-  
+
   {
     auto it = identifiers->begin();
     auto identifier = *it;
@@ -421,7 +421,7 @@ TEST_F(PartAssetTest, should_parse_a_part)
     auto st = identifier->get<Timestamp>("timestamp");
     EXPECT_EQ("2025-11-28T00:01:00Z", getCurrentTime(st, GMT));
     EXPECT_EQ("UID123456", identifier->getValue<string>());
-    
+
     it++;
     identifier = *it;
     EXPECT_EQ("GROUP_IDENTIFIER", identifier->get<string>("type"));
@@ -430,11 +430,11 @@ TEST_F(PartAssetTest, should_parse_a_part)
     EXPECT_EQ("2025-11-28T00:02:00Z", getCurrentTime(st, GMT));
     EXPECT_EQ("GID1235", identifier->getValue<string>());
   }
-  
+
   // Round trip test
   entity::XmlPrinter printer;
   printer.print(*m_writer, entity, {});
-  
+
   string content = m_writer->getContent();
   ASSERT_EQ(content, doc);
 }
@@ -444,27 +444,27 @@ TEST_F(PartAssetTest, part_identifiers_are_optional)
   const auto doc =
       R"DOC(<Part assetId="PART1234" drawing="STEP222" family="HHH" nativeId="NATIVE001" revision="5"/>
 )DOC";
-  
+
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(Asset::getRoot(), doc, errors);
   ASSERT_EQ(0, errors.size());
-  
+
   auto asset = dynamic_cast<Asset *>(entity.get());
   ASSERT_NE(nullptr, asset);
-  
+
   ASSERT_EQ("Part", asset->getName());
   EXPECT_EQ("PART1234", asset->getAssetId());
   EXPECT_EQ("5", asset->get<string>("revision"));
   EXPECT_EQ("STEP222", asset->get<string>("drawing"));
   EXPECT_EQ("HHH", asset->get<string>("family"));
   EXPECT_EQ("NATIVE001", asset->get<string>("nativeId"));
-  
+
   // Round trip test
   entity::XmlPrinter printer;
   printer.print(*m_writer, entity, {});
-  
+
   string content = m_writer->getContent();
   ASSERT_EQ(content, doc);
 }
@@ -479,24 +479,23 @@ TEST_F(PartAssetTest, part_identifiers_type_must_be_unique_or_group)
   </PartIdentifiers>
 </Part>
 )DOC";
-  
+
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(Asset::getRoot(), doc, errors);
   ASSERT_EQ(2, errors.size());
-  
+
   auto it = errors.begin();
   {
     auto error = dynamic_cast<PropertyError *>(it->get());
     ASSERT_TRUE(error);
-    EXPECT_EQ(
-              "Identifier(type): Invalid value for 'type': 'OTHER_IDENTIFIER' is not allowed"s,
+    EXPECT_EQ("Identifier(type): Invalid value for 'type': 'OTHER_IDENTIFIER' is not allowed"s,
               error->what());
     EXPECT_EQ("Identifier", error->getEntity());
     EXPECT_EQ("type", error->getProperty());
   }
-  
+
   it++;
   {
     auto error = it->get();
@@ -504,7 +503,6 @@ TEST_F(PartAssetTest, part_identifiers_type_must_be_unique_or_group)
     EXPECT_EQ("PartIdentifiers: Invalid element 'Identifier'"s, error->what());
     EXPECT_EQ("PartIdentifiers", error->getEntity());
   }
-
 }
 
 TEST_F(PartAssetTest, part_should_be_extensible)
@@ -528,19 +526,19 @@ TEST_F(PartAssetTest, part_should_be_extensible)
   </WorkOrder>
 </Part>
 )DOC";
-  
+
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(Asset::getRoot(), doc, errors);
   ASSERT_EQ(0, errors.size());
-  
+
   auto asset = dynamic_cast<Asset *>(entity.get());
   ASSERT_NE(nullptr, asset);
-  
+
   auto workOrder = asset->get<EntityPtr>("WorkOrder");
   ASSERT_TRUE(workOrder);
-  
+
   ASSERT_EQ("WO12345", workOrder->get<string>("number"));
   ASSERT_EQ("2025-12-01T00:00:00Z", workOrder->get<string>("OrderDate"));
   ASSERT_EQ("2025-12-20T00:00:00Z", workOrder->get<string>("DueDate"));
@@ -568,19 +566,19 @@ TEST_F(PartAssetTest, part_should_generate_json)
   </WorkOrder>
 </Part>
 )DOC";
-  
+
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(Asset::getRoot(), doc, errors);
   ASSERT_EQ(0, errors.size());
-  
+
   auto asset = dynamic_cast<Asset *>(entity.get());
   ASSERT_NE(nullptr, asset);
-  
+
   // Round trip test
   entity::JsonEntityPrinter jprinter(2, true);
-  
+
   auto jdoc = jprinter.print(entity);
   EXPECT_EQ(R"({
   "Part": {
@@ -630,7 +628,6 @@ TEST_F(PartAssetTest, part_should_generate_json)
     "nativeId": "NATIVE001",
     "revision": "5"
   }
-})", jdoc);
-  
+})",
+            jdoc);
 }
-

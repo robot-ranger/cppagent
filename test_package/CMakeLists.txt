@@ -224,6 +224,7 @@ add_agent_test(fixture FALSE asset)
 add_agent_test(target FALSE asset)
 add_agent_test(process FALSE asset)
 add_agent_test(part FALSE asset)
+add_agent_test(task FALSE asset)
 
 add_agent_test(agent_device TRUE device_model)
 add_agent_test(component FALSE device_model)

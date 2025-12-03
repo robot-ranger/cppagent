@@ -31,6 +31,7 @@ set(AGENT_SOURCES
         "${SOURCE_DIR}/asset/process.hpp"
         "${SOURCE_DIR}/asset/pallet.hpp"
         "${SOURCE_DIR}/asset/target.hpp"
+        "${SOURCE_DIR}/asset/task.hpp"
 
 # src/asset SOURCE_FILES_ONLY
   
@@ -46,6 +47,7 @@ set(AGENT_SOURCES
         "${SOURCE_DIR}/asset/process.cpp"
         "${SOURCE_DIR}/asset/pallet.cpp"
         "${SOURCE_DIR}/asset/target.cpp"
+        "${SOURCE_DIR}/asset/task.cpp"
         
 # src/buffer HEADER_FILES_ONLY
 

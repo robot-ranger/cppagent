@@ -24,14 +24,14 @@ namespace mtconnect {
   namespace asset {
     FactoryPtr PartArchetype::getFactory()
     {
-      auto ext = make_shared<Factory>();
-      ext->registerFactory(regex(".+"), ext);
-      ext->setAny(true);
-      ext->setList(true);
-
       static FactoryPtr factory;
       if (!factory)
       {
+        auto ext = make_shared<Factory>();
+        ext->registerFactory(regex(".+"), ext);
+        ext->setAny(true);
+        ext->setList(true);
+
         auto customer = make_shared<Factory>(Requirements {
             {"customerId", true},
             {"name", false},
@@ -51,7 +51,6 @@ namespace mtconnect {
         });
         factory->registerFactory(regex(".+"), ext);
         factory->setAny(true);
-
       }
       return factory;
     }
@@ -76,12 +75,14 @@ namespace mtconnect {
         ext->setAny(true);
         ext->setList(true);
 
-        auto identifier = make_shared<Factory>(Requirements {
-          {"type", ControlledVocab {"UNIQUE_IDENTIFIER", "GROUP_IDENTIFIER"}, true},
-          {"stepIdRef", false}, {"timestamp", ValueType::TIMESTAMP, true}, {"VALUE", true}});
+        auto identifier = make_shared<Factory>(
+            Requirements {{"type", ControlledVocab {"UNIQUE_IDENTIFIER", "GROUP_IDENTIFIER"}, true},
+                          {"stepIdRef", false},
+                          {"timestamp", ValueType::TIMESTAMP, true},
+                          {"VALUE", true}});
 
         auto identifiers = make_shared<Factory>(Requirements {
-          {"Identifier", ValueType::ENTITY, identifier, 1, entity::Requirement::Infinite}});
+            {"Identifier", ValueType::ENTITY, identifier, 1, entity::Requirement::Infinite}});
 
         factory = make_shared<Factory>(*Asset::getFactory());
         factory->addRequirements({{"revision", true},
@@ -90,7 +91,7 @@ namespace mtconnect {
                                   {"PartIdentifiers", ValueType::ENTITY_LIST, identifiers, false}});
         factory->registerFactory(regex(".+"), ext);
         factory->setAny(true);
-     }
+      }
       return factory;
     }
 
