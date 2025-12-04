@@ -1169,6 +1169,66 @@ TEST_F(TaskAssetTest, task_must_have_collaborators_with_at_least_one_collaborato
       errors.front()->what());
 }
 
+TEST_F(TaskAssetTest, task_must_have_a_task_state)
+{
+  constexpr auto doc =
+      R"DOC(<Task assetId="2aa7eece24" deviceUuid="mxi_m001" hash="fCI1rCQv8BcHbzZeoMxt3kHmb9k=" timestamp="2024-12-10T05:17:05.531454Z">
+  <Configuration>
+    <Relationships>
+      <AssetRelationship assetIdRef="1aa7eece248093" assetType="TASK_ARCHETYPE" id="A" type="PEER"/>
+    </Relationships>
+  </Configuration>
+  <TaskType>MATERIAL_UNLOAD</TaskType>
+  <ParentTaskAssetId>dfgfdghfkj</ParentTaskAssetId>
+  <Coordinator>
+    <Collaborator collaboratorDeviceUuid="xyz" collaboratorId="machine"/>
+  </Coordinator>
+  <Collaborators>
+    <Collaborator collaboratorDeviceUuid="Mazak123" collaboratorId="robot2"/>
+  </Collaborators>
+</Task>
+)DOC";
+  
+  ErrorList errors;
+  entity::XmlParser parser;
+
+  auto entity = parser.parse(Asset::getRoot(), doc, errors);
+  ASSERT_EQ(1, errors.size());
+  
+  EXPECT_EQ("Task(TaskState): Property TaskState is required and not provided"s,
+            errors.front()->what());
+}
+
+TEST_F(TaskAssetTest, task_must_have_a_task_type)
+{
+  constexpr auto doc =
+      R"DOC(<Task assetId="2aa7eece24" deviceUuid="mxi_m001" hash="fCI1rCQv8BcHbzZeoMxt3kHmb9k=" timestamp="2024-12-10T05:17:05.531454Z">
+  <Configuration>
+    <Relationships>
+      <AssetRelationship assetIdRef="1aa7eece248093" assetType="TASK_ARCHETYPE" id="A" type="PEER"/>
+    </Relationships>
+  </Configuration>
+  <TaskState>COMMITTED</TaskState>
+  <ParentTaskAssetId>dfgfdghfkj</ParentTaskAssetId>
+  <Coordinator>
+    <Collaborator collaboratorDeviceUuid="xyz" collaboratorId="machine"/>
+  </Coordinator>
+  <Collaborators>
+    <Collaborator collaboratorDeviceUuid="Mazak123" collaboratorId="robot2"/>
+  </Collaborators>
+</Task>
+)DOC";
+  
+  ErrorList errors;
+  entity::XmlParser parser;
+  
+  auto entity = parser.parse(Asset::getRoot(), doc, errors);
+  ASSERT_EQ(1, errors.size());
+  
+  EXPECT_EQ("Task(TaskType): Property TaskType is required and not provided"s,
+            errors.front()->what());
+}
+
 TEST_F(TaskAssetTest, task_should_accept_all_task_states)
 {
   constexpr auto doc =

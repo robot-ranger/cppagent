@@ -76,12 +76,12 @@ TEST_F(AssetHashTest, should_assign_hash_when_receiving_asset)
   const auto &storage = agent->getAssetStorage();
 
   m_agentTestHelper->m_adapter->parseBuffer(
-      R"("2021-02-01T12:00:00Z|@ASSET@|P1|Part|--multiline--AAAA
-<Part assetId='P1'>
+      R"("2021-02-01T12:00:00Z|@ASSET@|P1|FakeAsset|--multiline--AAAA
+<FakeAsset assetId='P1'>
   <PartXXX>TEST 1</PartXXX>
     Some Text
   <Extra>XXX</Extra>
-</Part>
+</FakeAsset>
 --multiline--AAAA
 )");
   ASSERT_EQ((unsigned int)4, storage->getMaxAssets());
@@ -93,12 +93,12 @@ TEST_F(AssetHashTest, should_assign_hash_when_receiving_asset)
   {
     PARSE_XML_RESPONSE("/asset/P1");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetCount", "1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part/m:PartXXX", "TEST 1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part/m:Extra", "XXX");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part@assetId", "P1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part@deviceUuid", "000");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part@timestamp", "2021-02-01T12:00:00Z");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part@hash", hash.c_str());
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset/m:PartXXX", "TEST 1");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset/m:Extra", "XXX");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset@assetId", "P1");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset@deviceUuid", "000");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset@timestamp", "2021-02-01T12:00:00Z");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset@hash", hash.c_str());
   }
 
   {
@@ -107,12 +107,12 @@ TEST_F(AssetHashTest, should_assign_hash_when_receiving_asset)
   }
 
   m_agentTestHelper->m_adapter->parseBuffer(
-      R"("2023-02-01T12:00:00Z|@ASSET@|P1|Part|--multiline--AAAA
-<Part assetId='P1'>
+      R"("2023-02-01T12:00:00Z|@ASSET@|P1|FakeAsset|--multiline--AAAA
+<FakeAsset assetId='P1'>
   <PartXXX>TEST 1</PartXXX>
     Some Text
   <Extra>XXX</Extra>
-</Part>
+</FakeAsset>
 --multiline--AAAA
 )");
 
@@ -123,8 +123,8 @@ TEST_F(AssetHashTest, should_assign_hash_when_receiving_asset)
 
   {
     PARSE_XML_RESPONSE("/asset/P1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part@timestamp", "2023-02-01T12:00:00Z");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part@hash", hash.c_str());
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset@timestamp", "2023-02-01T12:00:00Z");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset@hash", hash.c_str());
   }
 
   {
@@ -140,12 +140,12 @@ TEST_F(AssetHashTest, hash_should_change_when_doc_changes)
   const auto &storage = agent->getAssetStorage();
 
   m_agentTestHelper->m_adapter->parseBuffer(
-      R"("2021-02-01T12:00:00Z|@ASSET@|P1|Part|--multiline--AAAA
-<Part assetId='P1'>
+      R"("2021-02-01T12:00:00Z|@ASSET@|P1|FakeAsset|--multiline--AAAA
+<FakeAsset assetId='P1'>
   <PartXXX>TEST 1</PartXXX>
     Some Text
   <Extra>XXX</Extra>
-</Part>
+</FakeAsset>
 --multiline--AAAA
 )");
   ASSERT_EQ((unsigned int)4, storage->getMaxAssets());
@@ -157,12 +157,12 @@ TEST_F(AssetHashTest, hash_should_change_when_doc_changes)
   {
     PARSE_XML_RESPONSE("/asset/P1");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetCount", "1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part/m:PartXXX", "TEST 1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part/m:Extra", "XXX");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part@assetId", "P1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part@deviceUuid", "000");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part@timestamp", "2021-02-01T12:00:00Z");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part@hash", hash.c_str());
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset/m:PartXXX", "TEST 1");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset/m:Extra", "XXX");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset@assetId", "P1");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset@deviceUuid", "000");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset@timestamp", "2021-02-01T12:00:00Z");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset@hash", hash.c_str());
   }
 
   {
@@ -172,11 +172,11 @@ TEST_F(AssetHashTest, hash_should_change_when_doc_changes)
 
   m_agentTestHelper->m_adapter->parseBuffer(
       R"("2023-02-01T12:00:00Z|@ASSET@|P1|Part|--multiline--AAAA
-<Part assetId='P1'>
+<FakeAsset assetId='P1'>
   <PartXXX>TEST 2</PartXXX>
     Some Text
   <Extra>XXX</Extra>
-</Part>
+</FakeAsset>
 --multiline--AAAA
 )");
 
@@ -187,8 +187,8 @@ TEST_F(AssetHashTest, hash_should_change_when_doc_changes)
 
   {
     PARSE_XML_RESPONSE("/asset/P1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part@timestamp", "2023-02-01T12:00:00Z");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part@hash", hash2.c_str());
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset@timestamp", "2023-02-01T12:00:00Z");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset@hash", hash2.c_str());
   }
 
   {
