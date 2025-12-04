@@ -34,7 +34,7 @@
 #include "mtconnect/asset/task.hpp"
 #include "mtconnect/entity/xml_parser.hpp"
 #include "mtconnect/entity/xml_printer.hpp"
-#include "mtconnect/printer//xml_printer_helper.hpp"
+#include "mtconnect/printer/xml_printer_helper.hpp"
 #include "mtconnect/source/adapter/adapter.hpp"
 
 using json = nlohmann::json;
@@ -68,7 +68,7 @@ protected:
   std::unique_ptr<AgentTestHelper> m_agentTestHelper;
 };
 
-/// @section PartArchetype tests
+/// @section TaskArchetype tests
 
 TEST_F(TaskAssetTest, should_parse_a_part_archetype)
 {
@@ -682,6 +682,8 @@ TEST_F(TaskAssetTest, task_archetype_should_have_optional_fields_for_sub_task_re
   string content = m_writer->getContent();
   ASSERT_EQ(content, doc);
 }
+
+/// @section Task tests
 
 TEST_F(TaskAssetTest, should_parse_simple_task)
 {

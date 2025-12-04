@@ -35,8 +35,8 @@
 #include "mtconnect/entity/json_printer.hpp"
 #include "mtconnect/entity/xml_parser.hpp"
 #include "mtconnect/entity/xml_printer.hpp"
-#include "mtconnect/printer//xml_printer.hpp"
-#include "mtconnect/printer//xml_printer_helper.hpp"
+#include "mtconnect/printer/xml_printer.hpp"
+#include "mtconnect/printer/xml_printer_helper.hpp"
 #include "mtconnect/source/adapter/adapter.hpp"
 
 using json = nlohmann::json;

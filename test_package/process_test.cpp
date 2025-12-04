@@ -33,7 +33,7 @@
 #include "mtconnect/asset/process.hpp"
 #include "mtconnect/entity/xml_parser.hpp"
 #include "mtconnect/entity/xml_printer.hpp"
-#include "mtconnect/printer//xml_printer_helper.hpp"
+#include "mtconnect/printer/xml_printer_helper.hpp"
 #include "mtconnect/source/adapter/adapter.hpp"
 
 using json = nlohmann::json;
@@ -454,7 +454,7 @@ TEST_F(ProcessAssetTest, process_archetype_routing_must_have_a_process_step)
   }
 }
 
-TEST_F(ProcessAssetTest, activity_can_have_a_sequence_precidence_and_be_options)
+TEST_F(ProcessAssetTest, activity_can_have_a_sequence_precedence_and_be_optional)
 {
   const auto doc =
       R"DOC(<ProcessArchetype assetId="PROCESS_ARCH_ID" revision="1">
