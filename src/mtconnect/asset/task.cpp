@@ -34,14 +34,12 @@ namespace mtconnect {
             {"type", false},
             {"optional", ValueType::BOOL, false},
             {"Targets", ValueType::ENTITY_LIST, Target::getAllTargetsFactory(), true}});
-        
-        auto collaborators = make_shared<Factory>(
-                                      Requirements {{"Collaborator", ValueType::ENTITY, collaborator, 1,
-                                        entity::Requirement::Infinite}});
+
+        auto collaborators = make_shared<Factory>(Requirements {
+            {"Collaborator", ValueType::ENTITY, collaborator, 1, entity::Requirement::Infinite}});
         auto coordinator = make_shared<Factory>(
-                                      Requirements {{"Collaborator", ValueType::ENTITY, collaborator, true}});
-        
-        
+            Requirements {{"Collaborator", ValueType::ENTITY, collaborator, true}});
+
         auto ext = make_shared<Factory>();
         ext->registerFactory(regex(".+"), ext);
         ext->setAny(true);
@@ -61,12 +59,11 @@ namespace mtconnect {
             {{"TaskType", true},
              {"Priority", ValueType::INTEGER, false},
              {"Coordinator", ValueType::ENTITY, coordinator, true},
-             {"Collaborators", ValueType::ENTITY_LIST, collaborators,
-              true},
+             {"Collaborators", ValueType::ENTITY_LIST, collaborators, true},
              {"Targets", ValueType::ENTITY_LIST, Target::getAllTargetsFactory(), false},
              {"SubTaskRefs", ValueType::ENTITY_LIST, subTaskRefs, false}});
-        factory->setOrder(
-            {{"TaskType", "Priority", "Targets", "Coordinator", "Collaborators", "SubTaskREfs"}});
+        factory->setOrder({{"Configuration", "TaskType", "Priority", "Targets", "Coordinator",
+                            "Collaborators", "SubTaskREfs"}});
         factory->registerFactory(regex(".+"), ext);
         factory->setAny(true);
       }
@@ -88,18 +85,15 @@ namespace mtconnect {
       static FactoryPtr factory;
       if (!factory)
       {
-        auto collaborator = make_shared<Factory>(Requirements {
-          {"collaboratorId", true},
-          {"type", false},
-          {"collaboratorDeviceUuid", false},
-          {"requirementId", false}});
-        
-        auto collaborators = make_shared<Factory>(
-                                                  Requirements {{"Collaborator", ValueType::ENTITY, collaborator, 1,
-                                                    entity::Requirement::Infinite}});
+        auto collaborator = make_shared<Factory>(Requirements {{"collaboratorId", true},
+                                                               {"type", false},
+                                                               {"collaboratorDeviceUuid", false},
+                                                               {"requirementId", false}});
+
+        auto collaborators = make_shared<Factory>(Requirements {
+            {"Collaborator", ValueType::ENTITY, collaborator, 1, entity::Requirement::Infinite}});
         auto coordinator = make_shared<Factory>(
-                                                Requirements {{"Collaborator", ValueType::ENTITY, collaborator, true}});
-        
+            Requirements {{"Collaborator", ValueType::ENTITY, collaborator, true}});
 
         auto ext = make_shared<Factory>();
         ext->registerFactory(regex(".+"), ext);
@@ -107,23 +101,21 @@ namespace mtconnect {
         ext->setList(true);
 
         factory = make_shared<Factory>(*Asset::getFactory());
-        factory->addRequirements(
-            {{"TaskType", true},
-             {"State",
-              ControlledVocab {"INACTIVE", "PREPARING", "COMMITTING", "COMMITTED", "COMPLETE",
-                               "FAIL"},
-              true},
-             {"ParentTaskAssetId", false},
-             {"TaskArchetypeAssetId", false},
-             {"Coordinator", ValueType::ENTITY, coordinator, true},
-             {"Collaborators", ValueType::ENTITY_LIST, collaborators,
-              true}});
+        factory->addRequirements({{"TaskType", true},
+                                  {"TaskState",
+                                   ControlledVocab {"INACTIVE", "PREPARING", "COMMITTING",
+                                                    "COMMITTED", "COMPLETE", "FAIL"},
+                                   true},
+                                  {"ParentTaskAssetId", false},
+                                  {"TaskArchetypeAssetId", false},
+                                  {"Coordinator", ValueType::ENTITY, coordinator, true},
+                                  {"Collaborators", ValueType::ENTITY_LIST, collaborators, true}});
         auto task = make_shared<Factory>(
             Requirements {{"Task", ValueType::ENTITY, factory, 1, entity::Requirement::Infinite}});
 
         factory->addRequirements({{"SubTasks", ValueType::ENTITY_LIST, task, false}});
-        factory->setOrder({"TaskType", "State", "ParentTaskAssetId", "TaskArchetypeAssetId",
-                           "SubTasks", "Coordinator", "Collaborators"});
+        factory->setOrder({"Configuration", "TaskType", "TaskState", "ParentTaskAssetId",
+                           "TaskArchetypeAssetId", "Coordinator", "Collaborators", "SubTasks"});
         factory->registerFactory(regex(".+"), ext);
         factory->setAny(true);
       }

@@ -155,8 +155,7 @@ namespace mtconnect {
       if (!factory)
       {
         factory = make_shared<Factory>(*Target::getFactory());
-        factory->addRequirements(
-            {{"requirementId", true}, {"VALUE", ValueType::TABLE, true}});
+        factory->addRequirements({{"requirementId", true}, {"VALUE", ValueType::TABLE, true}});
       }
 
       return factory;

@@ -147,7 +147,7 @@ namespace mtconnect {
       /// @param name the name of the property
       /// @return `true` if this is a table
       bool isTable(const std::string &name) const { return m_tables.count(name) > 0; }
-      
+
       /// @brief is the value of this entity a data set or table
       /// @returns `true` if the value is a data set or table
       bool isValueDataSet() const { return m_isValueDataSet; }
