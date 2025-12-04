@@ -101,7 +101,7 @@ TEST_F(TaskAssetTest, should_parse_a_part_archetype)
           <Entry key="REACH">
             <Cell key="minimum">1500</Cell>
           </Entry>
-        </TargetRequirement>
+        </TargetRequirementTable>
         <TargetRef groupIdRef="MyRobots"/>
       </Targets>
     </Collaborator>
@@ -192,10 +192,10 @@ TEST_F(TaskAssetTest, should_parse_a_part_archetype)
     ASSERT_EQ(2, targets->size());
     {
       auto tit = targets->begin();
-      EXPECT_EQ("TargetRequirement", (*tit)->getName());
+      EXPECT_EQ("TargetRequirementTable", (*tit)->getName());
       EXPECT_EQ("ab", (*tit)->get<string>("requirementId"));
       
-      auto table = (*tit)->get<DataSet>("CapabilityTable");
+      auto table = (*tit)->getValue<DataSet>();
       ASSERT_EQ(2, table.size());
       
       const auto &row1 = get<TableRow>(table.find(DataSetEntry("PAYLOAD"))->m_value);
@@ -251,22 +251,433 @@ TEST_F(TaskAssetTest, should_parse_a_part_archetype)
 
 TEST_F(TaskAssetTest, task_archetype_should_produce_json)
 {
-  GTEST_SKIP();
+  const auto doc =
+      R"DOC(<TaskArchetype assetId="1aa7eece248093" deviceUuid="mxi_m001" hash="fCI1rCQv8BcHbzZeoMxt3kHmb9k=" timestamp="2024-12-10T05:17:05.531454Z">
+  <TaskType>MATERIAL_UNLOAD</TaskType>
+  <Priority>10</Priority>
+  <Targets>
+    <TargetDevice deviceUuid="Mazak123"/>
+    <TargetDevice deviceUuid="Mazak456"/>
+    <TargetGroup groupId="MyRobots">
+      <TargetDevice deviceUuid="UR123"/>
+      <TargetDevice deviceUuid="UR456"/>
+    </TargetGroup>
+  </Targets>
+  <Coordinator>
+    <Collaborator collaboratorId="machine" type="CNC">
+      <Targets>
+        <TargetDevice deviceUuid="Mazak123"/>
+        <TargetDevice deviceUuid="Mazak456"/>
+      </Targets>
+    </Collaborator>
+  </Coordinator>
+  <Collaborators>
+    <Collaborator collaboratorId="Robot" type="ROBOT">
+      <Targets>
+        <TargetRequirementTable requirementId="ab">
+          <Entry key="PAYLOAD">
+            <Cell key="maximum">1000</Cell>
+          </Entry>
+          <Entry key="REACH">
+            <Cell key="minimum">1500</Cell>
+          </Entry>
+        </TargetRequirementTable>
+        <TargetRef groupIdRef="MyRobots"/>
+      </Targets>
+    </Collaborator>
+    <Collaborator collaboratorId="robot2" type="ROBOT">
+      <Targets>
+        <TargetDevice deviceUuid="UR890"/>
+      </Targets>
+    </Collaborator>
+  </Collaborators>
+  <SubTaskRefs>
+    <SubTaskRef order="1">UnloadConv</SubTaskRef>
+    <SubTaskRef order="2">LoadCnc</SubTaskRef>
+  </SubTaskRefs>
+</TaskArchetype>
+)DOC";
+  
+  ErrorList errors;
+  entity::XmlParser parser;
+  
+  auto entity = parser.parse(Asset::getRoot(), doc, errors);
+  ASSERT_EQ(0, errors.size());
+  
+  entity::JsonEntityPrinter jprinter(2, true);
+  
+  auto jdoc = jprinter.print(entity);
+  EXPECT_EQ(R"({
+  "TaskArchetype": {
+    "Collaborators": {
+      "Collaborator": [
+        {
+          "Targets": {
+            "TargetRef": [
+              {
+                "groupIdRef": "MyRobots"
+              }
+            ],
+            "TargetRequirementTable": [
+              {
+                "value": {
+                  "PAYLOAD": {
+                    "maximum": 1000
+                  },
+                  "REACH": {
+                    "minimum": 1500
+                  }
+                },
+                "requirementId": "ab"
+              }
+            ]
+          },
+          "collaboratorId": "Robot",
+          "type": "ROBOT"
+        },
+        {
+          "Targets": {
+            "TargetDevice": [
+              {
+                "deviceUuid": "UR890"
+              }
+            ]
+          },
+          "collaboratorId": "robot2",
+          "type": "ROBOT"
+        }
+      ]
+    },
+    "Coordinator": {
+      "Collaborator": {
+        "Targets": {
+          "TargetDevice": [
+            {
+              "deviceUuid": "Mazak123"
+            },
+            {
+              "deviceUuid": "Mazak456"
+            }
+          ]
+        },
+        "collaboratorId": "machine",
+        "type": "CNC"
+      }
+    },
+    "Priority": 10,
+    "SubTaskRefs": {
+      "SubTaskRef": [
+        {
+          "value": "UnloadConv",
+          "order": 1
+        },
+        {
+          "value": "LoadCnc",
+          "order": 2
+        }
+      ]
+    },
+    "Targets": {
+      "TargetDevice": [
+        {
+          "deviceUuid": "Mazak123"
+        },
+        {
+          "deviceUuid": "Mazak456"
+        }
+      ],
+      "TargetGroup": [
+        {
+          "TargetDevice": [
+            {
+              "deviceUuid": "UR123"
+            },
+            {
+              "deviceUuid": "UR456"
+            }
+          ],
+          "groupId": "MyRobots"
+        }
+      ]
+    },
+    "TaskType": "MATERIAL_UNLOAD",
+    "assetId": "1aa7eece248093",
+    "deviceUuid": "mxi_m001",
+    "hash": "fCI1rCQv8BcHbzZeoMxt3kHmb9k=",
+    "timestamp": "2024-12-10T05:17:05.531454Z"
+  }
+})", jdoc);
 }
 
 TEST_F(TaskAssetTest, task_archetype_must_have_collaborators)
 {
-  GTEST_SKIP();
+  const auto doc =
+      R"DOC(<TaskArchetype assetId="1aa7eece248093" deviceUuid="mxi_m001" hash="fCI1rCQv8BcHbzZeoMxt3kHmb9k=" timestamp="2024-12-10T05:17:05.531454Z">
+  <TaskType>MATERIAL_UNLOAD</TaskType>
+  <Priority>10</Priority>
+  <Targets>
+    <TargetDevice deviceUuid="Mazak123"/>
+    <TargetDevice deviceUuid="Mazak456"/>
+    <TargetGroup groupId="MyRobots">
+      <TargetDevice deviceUuid="UR123"/>
+      <TargetDevice deviceUuid="UR456"/>
+    </TargetGroup>
+  </Targets>
+  <Coordinator>
+    <Collaborator collaboratorId="machine" type="CNC">
+      <Targets>
+        <TargetDevice deviceUuid="Mazak123"/>
+        <TargetDevice deviceUuid="Mazak456"/>
+      </Targets>
+    </Collaborator>
+  </Coordinator>
+  <SubTaskRefs>
+    <SubTaskRef order="1">UnloadConv</SubTaskRef>
+    <SubTaskRef order="2">LoadCnc</SubTaskRef>
+  </SubTaskRefs>
+</TaskArchetype>
+)DOC";
+  
+  ErrorList errors;
+  entity::XmlParser parser;
+  
+  auto entity = parser.parse(Asset::getRoot(), doc, errors);
+  ASSERT_EQ(1, errors.size());
+  
+  EXPECT_EQ("TaskArchetype(Collaborators): Property Collaborators is required and not provided"s, errors.front()->what());
 }
+
+TEST_F(TaskAssetTest, task_archetype_must_have_collaborators_with_at_least_one_collaborator)
+{
+  const auto doc =
+      R"DOC(<TaskArchetype assetId="1aa7eece248093" deviceUuid="mxi_m001" hash="fCI1rCQv8BcHbzZeoMxt3kHmb9k=" timestamp="2024-12-10T05:17:05.531454Z">
+  <TaskType>MATERIAL_UNLOAD</TaskType>
+  <Priority>10</Priority>
+  <Targets>
+    <TargetDevice deviceUuid="Mazak123"/>
+    <TargetDevice deviceUuid="Mazak456"/>
+    <TargetGroup groupId="MyRobots">
+      <TargetDevice deviceUuid="UR123"/>
+      <TargetDevice deviceUuid="UR456"/>
+    </TargetGroup>
+  </Targets>
+  <Coordinator>
+    <Collaborator collaboratorId="machine" type="CNC">
+      <Targets>
+        <TargetDevice deviceUuid="Mazak123"/>
+        <TargetDevice deviceUuid="Mazak456"/>
+      </Targets>
+    </Collaborator>
+  </Coordinator>
+  <Collaborators/>
+  <SubTaskRefs>
+    <SubTaskRef order="1">UnloadConv</SubTaskRef>
+    <SubTaskRef order="2">LoadCnc</SubTaskRef>
+  </SubTaskRefs>
+</TaskArchetype>
+)DOC";
+  
+  ErrorList errors;
+  entity::XmlParser parser;
+  
+  auto entity = parser.parse(Asset::getRoot(), doc, errors);
+  ASSERT_EQ(3, errors.size());
+  
+  EXPECT_EQ("Collaborators(Collaborator): Entity list requirement Collaborator must have at least 1 entries, 0 found"s, errors.front()->what());
+}
+
 
 TEST_F(TaskAssetTest, task_archetype_must_have_a_coordinator)
 {
-  GTEST_SKIP();
+  const auto doc =
+      R"DOC(<TaskArchetype assetId="1aa7eece248093" deviceUuid="mxi_m001" hash="fCI1rCQv8BcHbzZeoMxt3kHmb9k=" timestamp="2024-12-10T05:17:05.531454Z">
+  <TaskType>MATERIAL_UNLOAD</TaskType>
+  <Priority>10</Priority>
+  <Targets>
+    <TargetDevice deviceUuid="Mazak123"/>
+    <TargetDevice deviceUuid="Mazak456"/>
+    <TargetGroup groupId="MyRobots">
+      <TargetDevice deviceUuid="UR123"/>
+      <TargetDevice deviceUuid="UR456"/>
+    </TargetGroup>
+  </Targets>
+  <Collaborators>
+    <Collaborator collaboratorId="Robot" type="ROBOT">
+      <Targets>
+        <TargetRequirementTable requirementId="ab">
+          <Entry key="PAYLOAD">
+            <Cell key="maximum">1000</Cell>
+          </Entry>
+          <Entry key="REACH">
+            <Cell key="minimum">1500</Cell>
+          </Entry>
+        </TargetRequirementTable>
+        <TargetRef groupIdRef="MyRobots"/>
+      </Targets>
+    </Collaborator>
+    <Collaborator collaboratorId="robot2" type="ROBOT">
+      <Targets>
+        <TargetDevice deviceUuid="UR890"/>
+      </Targets>
+    </Collaborator>
+  </Collaborators>
+  <SubTaskRefs>
+    <SubTaskRef order="1">UnloadConv</SubTaskRef>
+    <SubTaskRef order="2">LoadCnc</SubTaskRef>
+  </SubTaskRefs>
+</TaskArchetype>
+)DOC";
+  
+  ErrorList errors;
+  entity::XmlParser parser;
+  
+  auto entity = parser.parse(Asset::getRoot(), doc, errors);
+  ASSERT_EQ(1, errors.size());
+  
+  EXPECT_EQ("TaskArchetype(Coordinator): Property Coordinator is required and not provided"s, errors.front()->what());
+
 }
+
+TEST_F(TaskAssetTest, task_archetype_must_have_a_coordinator_with_a_collaborator)
+{
+  const auto doc =
+      R"DOC(<TaskArchetype assetId="1aa7eece248093" deviceUuid="mxi_m001" hash="fCI1rCQv8BcHbzZeoMxt3kHmb9k=" timestamp="2024-12-10T05:17:05.531454Z">
+  <TaskType>MATERIAL_UNLOAD</TaskType>
+  <Priority>10</Priority>
+  <Targets>
+    <TargetDevice deviceUuid="Mazak123"/>
+    <TargetDevice deviceUuid="Mazak456"/>
+    <TargetGroup groupId="MyRobots">
+      <TargetDevice deviceUuid="UR123"/>
+      <TargetDevice deviceUuid="UR456"/>
+    </TargetGroup>
+  </Targets>
+  <Coordinator>
+  </Coordinator>
+  <Collaborators>
+    <Collaborator collaboratorId="Robot" type="ROBOT">
+      <Targets>
+        <TargetRequirementTable requirementId="ab">
+          <Entry key="PAYLOAD">
+            <Cell key="maximum">1000</Cell>
+          </Entry>
+          <Entry key="REACH">
+            <Cell key="minimum">1500</Cell>
+          </Entry>
+        </TargetRequirementTable>
+        <TargetRef groupIdRef="MyRobots"/>
+      </Targets>
+    </Collaborator>
+    <Collaborator collaboratorId="robot2" type="ROBOT">
+      <Targets>
+        <TargetDevice deviceUuid="UR890"/>
+      </Targets>
+    </Collaborator>
+  </Collaborators>
+  <SubTaskRefs>
+    <SubTaskRef order="1">UnloadConv</SubTaskRef>
+    <SubTaskRef order="2">LoadCnc</SubTaskRef>
+  </SubTaskRefs>
+</TaskArchetype>
+)DOC";
+  
+  ErrorList errors;
+  entity::XmlParser parser;
+  
+  auto entity = parser.parse(Asset::getRoot(), doc, errors);
+  ASSERT_EQ(3, errors.size());
+  
+  EXPECT_EQ("Coordinator(Collaborator): Property Collaborator is required and not provided"s, errors.front()->what());
+}
+
 
 TEST_F(TaskAssetTest, task_archetype_should_have_optional_fields_for_sub_task_refs)
 {
-  GTEST_SKIP();
+  const auto doc =
+      R"DOC(<TaskArchetype assetId="1aa7eece248093" deviceUuid="mxi_m001" hash="fCI1rCQv8BcHbzZeoMxt3kHmb9k=" timestamp="2024-12-10T05:17:05.531454Z">
+  <TaskType>MATERIAL_UNLOAD</TaskType>
+  <Priority>10</Priority>
+  <Targets>
+    <TargetDevice deviceUuid="Mazak123"/>
+    <TargetDevice deviceUuid="Mazak456"/>
+    <TargetGroup groupId="MyRobots">
+      <TargetDevice deviceUuid="UR123"/>
+      <TargetDevice deviceUuid="UR456"/>
+    </TargetGroup>
+  </Targets>
+  <Coordinator>
+    <Collaborator collaboratorId="machine" type="CNC">
+      <Targets>
+        <TargetDevice deviceUuid="Mazak123"/>
+        <TargetDevice deviceUuid="Mazak456"/>
+      </Targets>
+    </Collaborator>
+  </Coordinator>
+  <Collaborators>
+    <Collaborator collaboratorId="Robot" type="ROBOT">
+      <Targets>
+        <TargetRequirementTable requirementId="ab">
+          <Entry key="PAYLOAD">
+            <Cell key="maximum">1000</Cell>
+          </Entry>
+          <Entry key="REACH">
+            <Cell key="minimum">1500</Cell>
+          </Entry>
+        </TargetRequirementTable>
+        <TargetRef groupIdRef="MyRobots"/>
+      </Targets>
+    </Collaborator>
+    <Collaborator collaboratorId="robot2" type="ROBOT">
+      <Targets>
+        <TargetDevice deviceUuid="UR890"/>
+      </Targets>
+    </Collaborator>
+  </Collaborators>
+  <SubTaskRefs>
+    <SubTaskRef group="g1" optional="false" order="1" parallel="true">UnloadConv</SubTaskRef>
+    <SubTaskRef group="g1" optional="true" order="2" parallel="false">LoadCnc</SubTaskRef>
+  </SubTaskRefs>
+</TaskArchetype>
+)DOC";
+  
+  ErrorList errors;
+  entity::XmlParser parser;
+  
+  auto entity = parser.parse(Asset::getRoot(), doc, errors);
+  ASSERT_EQ(0, errors.size());
+  
+  auto asset = dynamic_cast<Asset *>(entity.get());
+  ASSERT_NE(nullptr, asset);
+
+  auto subtasks = asset->getList("SubTaskRefs");
+  ASSERT_TRUE(subtasks);
+  ASSERT_EQ(2, subtasks->size());
+  
+  {
+    auto it = subtasks->begin();
+    EXPECT_EQ("SubTaskRef", (*it)->getName());
+    EXPECT_EQ("g1", (*it)->get<string>("group"));
+    EXPECT_EQ(1, (*it)->get<int64_t>("order"));
+    EXPECT_EQ(false, (*it)->get<bool>("optional"));
+    EXPECT_EQ(true, (*it)->get<bool>("parallel"));
+    EXPECT_EQ("UnloadConv", (*it)->getValue<string>());
+    
+    it++;
+    EXPECT_EQ("SubTaskRef", (*it)->getName());
+    EXPECT_EQ(2, (*it)->get<int64_t>("order"));
+    EXPECT_EQ("g1", (*it)->get<string>("group"));
+    EXPECT_EQ(true, (*it)->get<bool>("optional"));
+    EXPECT_EQ(false, (*it)->get<bool>("parallel"));
+    EXPECT_EQ("LoadCnc", (*it)->getValue<string>());
+  }
+  
+
+  // Round trip test
+  entity::XmlPrinter printer;
+  printer.print(*m_writer, entity, {});
+  
+  string content = m_writer->getContent();
+  ASSERT_EQ(content, doc);
 }
 
 TEST_F(TaskAssetTest, should_parse_task)
