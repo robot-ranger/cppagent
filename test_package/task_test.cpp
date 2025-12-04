@@ -1199,7 +1199,7 @@ TEST_F(TaskAssetTest, task_should_accept_all_task_states)
 
     auto sd = format(doc, state);
     auto entity = parser.parse(Asset::getRoot(), sd, errors);
-    EXPECT_EQ(0, errors.size()) << "Invalid task state: " << state;
+    EXPECT_EQ(0, errors.size()) << "should accept task state: " << state;
   }
 }
 
@@ -1233,6 +1233,6 @@ TEST_F(TaskAssetTest, task_should_not_accept_invalid_task_states)
 
     auto sd = format(doc, state);
     auto entity = parser.parse(Asset::getRoot(), sd, errors);
-    EXPECT_EQ(1, errors.size()) << "Should fail: " << state;
+    EXPECT_EQ(1, errors.size()) << "Should fail task state: " << state;
   }
 }
