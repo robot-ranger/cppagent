@@ -316,12 +316,10 @@ TEST_F(TargetTest, verify_target_requirement)
   const auto doc = R"DOC(
 <Root>
   <Targets>
-    <TargetRequirement requirementId="req1">
-      <CapabilityTable>
-        <Entry key="R1"><Cell key="C1">ABC</Cell></Entry>
-        <Entry key="R2"><Cell key="C2">123</Cell></Entry>
-      </CapabilityTable>
-    </TargetRequirement>
+    <TargetRequirementTable requirementId="req1">
+      <Entry key="R1"><Cell key="C1">ABC</Cell></Entry>
+      <Entry key="R2"><Cell key="C2">123</Cell></Entry>
+    </TargetRequirementTable>
   </Targets>
 </Root>
 )DOC";
@@ -343,12 +341,10 @@ TEST_F(TargetTest, verify_target_requirement)
   ASSERT_EQ(1, targets->size());
   auto it = targets->begin();
 
-  ASSERT_EQ("TargetRequirement", (*it)->getName());
+  ASSERT_EQ("TargetRequirementTable", (*it)->getName());
   ASSERT_EQ("req1", (*it)->get<string>("requirementId"));
 
-  ASSERT_TRUE((*it)->hasProperty("CapabilityTable"));
-  const auto table = (*it)->get<DataSet>("CapabilityTable");
-
+  const auto table = (*it)->getValue<DataSet>();
   ASSERT_EQ(2, table.size());
 
   auto rowIt = table.begin();
@@ -379,12 +375,10 @@ TEST_F(TargetTest, verify_target_requirement_in_json)
   const auto doc = R"DOC(
 <Root>
   <Targets>
-    <TargetRequirement requirementId="req1">
-      <CapabilityTable>
-        <Entry key="R1"><Cell key="C1">ABC</Cell></Entry>
-        <Entry key="R2"><Cell key="C2">123</Cell></Entry>
-      </CapabilityTable>
-    </TargetRequirement>
+    <TargetRequirementTable requirementId="req1">
+      <Entry key="R1"><Cell key="C1">ABC</Cell></Entry>
+      <Entry key="R2"><Cell key="C2">123</Cell></Entry>
+    </TargetRequirementTable>
   </Targets>
 </Root>
 )DOC";
@@ -407,9 +401,9 @@ TEST_F(TargetTest, verify_target_requirement_in_json)
   ASSERT_EQ(R"JSON({
   "Root": {
     "Targets": {
-      "TargetRequirement": [
+      "TargetRequirementTable": [
         {
-          "CapabilityTable": {
+          "value": {
             "R1": {
               "C1": "ABC"
             },

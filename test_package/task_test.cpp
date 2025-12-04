@@ -94,15 +94,13 @@ TEST_F(TaskAssetTest, should_parse_a_part_archetype)
   <Collaborators>
     <Collaborator collaboratorId="Robot" type="ROBOT">
       <Targets>
-        <TargetRequirement requirementId="ab">
-          <CapabilityTable>
-            <Entry key="PAYLOAD">
-              <Cell key="maximum">1000</Cell>
-            </Entry>
-            <Entry key="REACH">
-              <Cell key="minimum">1500</Cell>
-            </Entry>
-          </CapabilityTable>
+        <TargetRequirementTable requirementId="ab">
+          <Entry key="PAYLOAD">
+            <Cell key="maximum">1000</Cell>
+          </Entry>
+          <Entry key="REACH">
+            <Cell key="minimum">1500</Cell>
+          </Entry>
         </TargetRequirement>
         <TargetRef groupIdRef="MyRobots"/>
       </Targets>

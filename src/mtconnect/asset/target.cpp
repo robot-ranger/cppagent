@@ -78,7 +78,7 @@ namespace mtconnect {
                                 entity::Requirement::Infinite),
             entity::Requirement("TargetRef", ValueType::ENTITY, TargetRef::getFactory(), 0,
                                 entity::Requirement::Infinite),
-            entity::Requirement("TargetRequirement", ValueType::ENTITY,
+            entity::Requirement("TargetRequirementTable", ValueType::ENTITY,
                                 TargetRequirement::getFactory(), 0,
                                 entity::Requirement::Infinite)});
 
@@ -95,7 +95,7 @@ namespace mtconnect {
       if (!targets)
       {
         targets = make_shared<Factory>(entity::Requirements {entity::Requirement(
-            "TargetRequirement", ValueType::ENTITY, TargetRequirement::getFactory(), 0,
+            "TargetRequirementTable", ValueType::ENTITY, TargetRequirement::getFactory(), 0,
             entity::Requirement::Infinite)});
 
         targets->registerMatchers();
@@ -156,7 +156,7 @@ namespace mtconnect {
       {
         factory = make_shared<Factory>(*Target::getFactory());
         factory->addRequirements(
-            {{"requirementId", true}, {"CapabilityTable", ValueType::TABLE, false}});
+            {{"requirementId", true}, {"VALUE", ValueType::TABLE, true}});
       }
 
       return factory;
