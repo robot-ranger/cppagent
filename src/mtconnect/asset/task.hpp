@@ -1,0 +1,44 @@
+//
+// Copyright Copyright 2009-2025, AMT – The Association For Manufacturing Technology (“AMT”)
+// All rights reserved.
+//
+//    Licensed under the Apache License, Version 2.0 (the "License");
+//    you may not use this file except in compliance with the License.
+//    You may obtain a copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//    Unless required by applicable law or agreed to in writing, software
+//    distributed under the License is distributed on an "AS IS" BASIS,
+//    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//    See the License for the specific language governing permissions and
+//    limitations under the License.
+//
+
+#pragma once
+
+#include <map>
+#include <utility>
+#include <vector>
+
+#include "asset.hpp"
+#include "mtconnect/entity/factory.hpp"
+#include "mtconnect/utilities.hpp"
+
+namespace mtconnect::asset {
+  /// @brief Manufacturing process archetype asset
+  class AGENT_LIB_API TaskArchetype : public Asset
+  {
+  public:
+    static entity::FactoryPtr getFactory();
+    static void registerAsset();
+  };
+
+  /// @brief Manufacturing process asset
+  class AGENT_LIB_API Task : public Asset
+  {
+  public:
+    static entity::FactoryPtr getFactory();
+    static void registerAsset();
+  };
+}  // namespace mtconnect::asset
