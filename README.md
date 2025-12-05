@@ -96,6 +96,8 @@ This architecture is designed to be modular, allowing organizations to gradually
 
 # ⚡ Quick Start
 
+> We should change this to download pre-built binaries first.
+
 This section helps developers get up and running with the agent in minutes.
 
 ### 1. Clone the Repository
