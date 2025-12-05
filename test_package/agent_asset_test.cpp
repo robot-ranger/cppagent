@@ -95,10 +95,10 @@ TEST_F(AgentAssetTest, should_store_assets_in_buffer)
 
   auto rest = m_agentTestHelper->getRestService();
   ASSERT_TRUE(rest->getServer()->arePutsAllowed());
-  string body = "<Part assetId='P1' deviceUuid='LinuxCNC'>TEST</Part>";
+  string body = "<FakeAsset assetId='P1' deviceUuid='LinuxCNC'>TEST</FakeAsset>";
   QueryMap queries;
 
-  queries["type"] = "Part";
+  queries["type"] = "FakeAsset";
   queries["device"] = "LinuxCNC";
 
   ASSERT_EQ((unsigned int)4, agent->getAssetStorage()->getMaxAssets());
@@ -113,14 +113,14 @@ TEST_F(AgentAssetTest, should_store_assets_in_buffer)
     PARSE_XML_RESPONSE("/asset/123");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetCount", "1");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetBufferSize", "4");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part", "TEST");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset", "TEST");
   }
 
   // The device should generate an asset changed event as well.
   {
     PARSE_XML_RESPONSE("/current");
     ASSERT_XML_PATH_EQUAL(doc, "//m:DeviceStream//m:AssetChanged", "123");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:DeviceStream//m:AssetChanged@assetType", "Part");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:DeviceStream//m:AssetChanged@assetType", "FakeAsset");
   }
 }
 
@@ -130,10 +130,10 @@ TEST_F(AgentAssetTest, should_store_assets_in_buffer_and_generate_asset_added)
 
   auto rest = m_agentTestHelper->getRestService();
   ASSERT_TRUE(rest->getServer()->arePutsAllowed());
-  string body = "<Part assetId='P1' deviceUuid='LinuxCNC'>TEST</Part>";
+  string body = "<FakeAsset assetId='P1' deviceUuid='LinuxCNC'>TEST</FakeAsset>";
   QueryMap queries;
 
-  queries["type"] = "Part";
+  queries["type"] = "FakeAsset";
   queries["device"] = "LinuxCNC";
 
   ASSERT_EQ((unsigned int)4, agent->getAssetStorage()->getMaxAssets());
@@ -148,25 +148,25 @@ TEST_F(AgentAssetTest, should_store_assets_in_buffer_and_generate_asset_added)
     PARSE_XML_RESPONSE("/asset/123");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetCount", "1");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetBufferSize", "4");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part", "TEST");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset", "TEST");
   }
 
   // The device should generate an asset added event as well.
   {
     PARSE_XML_RESPONSE("/LinuxCNC/current");
     ASSERT_XML_PATH_EQUAL(doc, "//m:DeviceStream//m:AssetAdded", "123");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:DeviceStream//m:AssetAdded@assetType", "Part");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:DeviceStream//m:AssetAdded@assetType", "FakeAsset");
   }
 }
 
 TEST_F(AgentAssetTest, should_handle_asset_buffer_and_buffer_limits)
 {
   auto agent = m_agentTestHelper->createAgent("/samples/test_config.xml", 8, 4, "1.3", 4, true);
-  string body = "<Part assetId='P1'>TEST 1</Part>";
+  string body = "<FakeAsset assetId='P1'>TEST 1</FakeAsset>";
   QueryMap queries;
 
   queries["device"] = "000";
-  queries["type"] = "Part";
+  queries["type"] = "FakeAsset";
 
   const auto &storage = agent->getAssetStorage();
 
@@ -176,51 +176,51 @@ TEST_F(AgentAssetTest, should_handle_asset_buffer_and_buffer_limits)
   {
     PARSE_XML_RESPONSE_PUT("/asset", body, queries);
     ASSERT_EQ((unsigned int)1, storage->getCount());
-    ASSERT_EQ(1, storage->getCountForType("Part"));
+    ASSERT_EQ(1, storage->getCountForType("FakeAsset"));
   }
 
   {
     PARSE_XML_RESPONSE("/asset/P1");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetCount", "1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part", "TEST 1");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset", "TEST 1");
   }
 
   // Make sure replace works properly
   {
     PARSE_XML_RESPONSE_PUT("/asset", body, queries);
     ASSERT_EQ((unsigned int)1, storage->getCount());
-    ASSERT_EQ(1, storage->getCountForType("Part"));
+    ASSERT_EQ(1, storage->getCountForType("FakeAsset"));
   }
 
-  body = "<Part assetId='P2'>TEST 2</Part>";
+  body = "<FakeAsset assetId='P2'>TEST 2</FakeAsset>";
 
   {
     PARSE_XML_RESPONSE_PUT("/asset", body, queries);
     ASSERT_EQ((unsigned int)2, storage->getCount());
-    ASSERT_EQ(2, storage->getCountForType("Part"));
+    ASSERT_EQ(2, storage->getCountForType("FakeAsset"));
   }
 
   {
     PARSE_XML_RESPONSE("/asset/P2");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetCount", "2");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part", "TEST 2");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset", "TEST 2");
   }
 
-  body = "<Part assetId='P3'>TEST 3</Part>";
+  body = "<FakeAsset assetId='P3'>TEST 3</FakeAsset>";
 
   {
     PARSE_XML_RESPONSE_PUT("/asset", body, queries);
     ASSERT_EQ((unsigned int)3, storage->getCount());
-    ASSERT_EQ(3, storage->getCountForType("Part"));
+    ASSERT_EQ(3, storage->getCountForType("FakeAsset"));
   }
 
   {
     PARSE_XML_RESPONSE("/asset/P3");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetCount", "3");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part", "TEST 3");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset", "TEST 3");
   }
 
-  body = "<Part assetId='P4'>TEST 4</Part>";
+  body = "<FakeAsset assetId='P4'>TEST 4</FakeAsset>";
 
   {
     PARSE_XML_RESPONSE_PUT("/asset", body, queries);
@@ -230,52 +230,52 @@ TEST_F(AgentAssetTest, should_handle_asset_buffer_and_buffer_limits)
   {
     PARSE_XML_RESPONSE("/asset/P4");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetCount", "4");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part", "TEST 4");
-    ASSERT_EQ(4, storage->getCountForType("Part"));
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset", "TEST 4");
+    ASSERT_EQ(4, storage->getCountForType("FakeAsset"));
   }
 
   // Test multiple asset get
   {
     PARSE_XML_RESPONSE("/assets");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetCount", "4");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part[4]", "TEST 1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part[3]", "TEST 2");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part[2]", "TEST 3");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part[1]", "TEST 4");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset[4]", "TEST 1");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset[3]", "TEST 2");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset[2]", "TEST 3");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset[1]", "TEST 4");
   }
 
   // Test multiple asset get with filter
   {
     PARSE_XML_RESPONSE_QUERY("/asset", queries);
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetCount", "4");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part[4]", "TEST 4");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part[3]", "TEST 3");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part[2]", "TEST 2");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part[1]", "TEST 1");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset[4]", "TEST 4");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset[3]", "TEST 3");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset[2]", "TEST 2");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset[1]", "TEST 1");
   }
 
   queries["count"] = "2";
   {
     PARSE_XML_RESPONSE_QUERY("/assets", queries);
     ASSERT_XML_PATH_COUNT(doc, "//m:Assets/*", 2);
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part[1]", "TEST 1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part[2]", "TEST 2");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset[1]", "TEST 1");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset[2]", "TEST 2");
   }
 
   queries.erase("count");
 
-  body = "<Part assetId='P5'>TEST 5</Part>";
+  body = "<FakeAsset assetId='P5'>TEST 5</FakeAsset>";
 
   {
     PARSE_XML_RESPONSE_PUT("/asset", body, queries);
     ASSERT_EQ((unsigned int)4, storage->getCount());
-    ASSERT_EQ(4, storage->getCountForType("Part"));
+    ASSERT_EQ(4, storage->getCountForType("FakeAsset"));
   }
 
   {
     PARSE_XML_RESPONSE("/asset/P5");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetCount", "4");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part", "TEST 5");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset", "TEST 5");
   }
 
   {
@@ -284,46 +284,46 @@ TEST_F(AgentAssetTest, should_handle_asset_buffer_and_buffer_limits)
     ASSERT_XML_PATH_EQUAL(doc, "//m:MTConnectError/m:Errors/m:Error", "Cannot find asset: P1");
   }
 
-  body = "<Part assetId='P3'>TEST 6</Part>";
+  body = "<FakeAsset assetId='P3'>TEST 6</FakeAsset>";
 
   {
     PARSE_XML_RESPONSE_PUT("/asset", body, queries);
     ASSERT_EQ((unsigned int)4, storage->getCount());
-    ASSERT_EQ(4, storage->getCountForType("Part"));
+    ASSERT_EQ(4, storage->getCountForType("FakeAsset"));
   }
 
   {
     PARSE_XML_RESPONSE("/asset/P3");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetCount", "4");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part", "TEST 6");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset", "TEST 6");
   }
 
   {
     PARSE_XML_RESPONSE("/asset/P2");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetCount", "4");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part", "TEST 2");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset", "TEST 2");
   }
 
-  body = "<Part assetId='P2'>TEST 7</Part>";
+  body = "<FakeAsset assetId='P2'>TEST 7</FakeAsset>";
 
   {
     PARSE_XML_RESPONSE_PUT("/asset", body, queries);
     ASSERT_EQ((unsigned int)4, storage->getCount());
-    ASSERT_EQ(4, storage->getCountForType("Part"));
+    ASSERT_EQ(4, storage->getCountForType("FakeAsset"));
   }
 
-  body = "<Part assetId='P6'>TEST 8</Part>";
+  body = "<FakeAsset assetId='P6'>TEST 8</FakeAsset>";
 
   {
     PARSE_XML_RESPONSE_PUT("/asset", body, queries);
     ASSERT_EQ((unsigned int)4, storage->getCount());
-    ASSERT_EQ(4, storage->getCountForType("Part"));
+    ASSERT_EQ(4, storage->getCountForType("FakeAsset"));
   }
 
   {
     PARSE_XML_RESPONSE("/asset/P6");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetCount", "4");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part", "TEST 8");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset", "TEST 8");
   }
 
   // Now since two and three have been modified, asset 4 should be removed.
@@ -383,14 +383,14 @@ TEST_F(AgentAssetTest, should_handle_asset_from_adapter_on_one_line)
   const auto &storage = agent->getAssetStorage();
 
   m_agentTestHelper->m_adapter->processData(
-      "2021-02-01T12:00:00Z|@ASSET@|P1|Part|<Part assetId='P1'>TEST 1</Part>");
+      "2021-02-01T12:00:00Z|@ASSET@|P1|FakeAsset|<FakeAsset assetId='P1'>TEST 1</FakeAsset>");
   ASSERT_EQ((unsigned int)4, storage->getMaxAssets());
   ASSERT_EQ((unsigned int)1, storage->getCount());
 
   {
     PARSE_XML_RESPONSE("/asset/P1");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetCount", "1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part", "TEST 1");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset", "TEST 1");
   }
 }
 
@@ -401,14 +401,14 @@ TEST_F(AgentAssetTest, should_handle_multiline_asset)
   const auto &storage = agent->getAssetStorage();
 
   m_agentTestHelper->m_adapter->parseBuffer(
-      "2021-02-01T12:00:00Z|@ASSET@|P1|Part|--multiline--AAAA\n");
+      "2021-02-01T12:00:00Z|@ASSET@|P1|FakeAsset|--multiline--AAAA\n");
   m_agentTestHelper->m_adapter->parseBuffer(
-      "<Part assetId='P1'>\n"
+      "<FakeAsset assetId='P1'>\n"
       "  <PartXXX>TEST 1</PartXXX>\n"
       "  Some Text\n"
       "  <Extra>XXX</Extra>\n");
   m_agentTestHelper->m_adapter->parseBuffer(
-      "</Part>\n"
+      "</FakeAsset>\n"
       "--multiline--AAAA\n");
   ASSERT_EQ((unsigned int)4, storage->getMaxAssets());
   ASSERT_EQ((unsigned int)1, storage->getCount());
@@ -416,11 +416,11 @@ TEST_F(AgentAssetTest, should_handle_multiline_asset)
   {
     PARSE_XML_RESPONSE("/asset/P1");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetCount", "1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part/m:PartXXX", "TEST 1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part/m:Extra", "XXX");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part@assetId", "P1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part@deviceUuid", "000");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part@timestamp", "2021-02-01T12:00:00Z");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset/m:PartXXX", "TEST 1");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset/m:Extra", "XXX");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset@assetId", "P1");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset@deviceUuid", "000");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset@timestamp", "2021-02-01T12:00:00Z");
   }
 
   // Make sure we can still add a line and we are out of multiline mode...
@@ -446,11 +446,11 @@ TEST_F(AgentAssetTest, should_handle_bad_asset_from_adapter)
 
 TEST_F(AgentAssetTest, should_handle_asset_removal_from_REST_api)
 {
-  string body = "<Part assetId='P1'>TEST 1</Part>";
+  string body = "<FakeAsset assetId='P1'>TEST 1</FakeAsset>";
   QueryMap query;
 
   query["device"] = "LinuxCNC";
-  query["type"] = "Part";
+  query["type"] = "FakeAsset";
 
   const auto &storage = m_agentTestHelper->m_agent->getAssetStorage();
 
@@ -460,62 +460,62 @@ TEST_F(AgentAssetTest, should_handle_asset_removal_from_REST_api)
   {
     PARSE_XML_RESPONSE_PUT("/asset", body, query);
     ASSERT_EQ((unsigned int)1, storage->getCount());
-    ASSERT_EQ(1, storage->getCountForType("Part"));
+    ASSERT_EQ(1, storage->getCountForType("FakeAsset"));
   }
 
   {
     PARSE_XML_RESPONSE("/asset/P1");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetCount", "1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part", "TEST 1");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset", "TEST 1");
   }
 
   // Make sure replace works properly
   {
     PARSE_XML_RESPONSE_PUT("/asset", body, query);
     ASSERT_EQ((unsigned int)1, storage->getCount());
-    ASSERT_EQ(1, storage->getCountForType("Part"));
+    ASSERT_EQ(1, storage->getCountForType("FakeAsset"));
   }
 
-  body = "<Part assetId='P2'>TEST 2</Part>";
+  body = "<FakeAsset assetId='P2'>TEST 2</FakeAsset>";
 
   {
     PARSE_XML_RESPONSE_PUT("/asset", body, query);
     ASSERT_EQ((unsigned int)2, storage->getCount());
-    ASSERT_EQ(2, storage->getCountForType("Part"));
+    ASSERT_EQ(2, storage->getCountForType("FakeAsset"));
   }
 
   {
     PARSE_XML_RESPONSE("/asset/P2");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetCount", "2");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part", "TEST 2");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset", "TEST 2");
   }
 
-  body = "<Part assetId='P3'>TEST 3</Part>";
+  body = "<FakeAsset assetId='P3'>TEST 3</FakeAsset>";
 
   {
     PARSE_XML_RESPONSE_PUT("/asset", body, query);
     ASSERT_EQ((unsigned int)3, storage->getCount());
-    ASSERT_EQ(3, storage->getCountForType("Part"));
+    ASSERT_EQ(3, storage->getCountForType("FakeAsset"));
   }
 
   {
     PARSE_XML_RESPONSE("/asset/P3");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetCount", "3");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part", "TEST 3");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset", "TEST 3");
   }
 
-  body = "<Part assetId='P2' removed='true'>TEST 2</Part>";
+  body = "<FakeAsset assetId='P2' removed='true'>TEST 2</FakeAsset>";
 
   {
     PARSE_XML_RESPONSE_PUT("/asset", body, query);
     ASSERT_EQ((unsigned int)3, storage->getCount(false));
-    ASSERT_EQ(3, storage->getCountForType("Part", false));
+    ASSERT_EQ(3, storage->getCountForType("FakeAsset", false));
   }
 
   {
     PARSE_XML_RESPONSE("/current");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetRemoved", "P2");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetRemoved@assetType", "Part");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetRemoved@assetType", "FakeAsset");
   }
 
   {
@@ -548,21 +548,21 @@ TEST_F(AgentAssetTest, should_handle_asset_removal_from_adapter)
   ASSERT_EQ((unsigned int)4, storage->getMaxAssets());
 
   m_agentTestHelper->m_adapter->processData(
-      "2021-02-01T12:00:00Z|@ASSET@|P1|Part|<Part assetId='P1'>TEST 1</Part>");
+      "2021-02-01T12:00:00Z|@ASSET@|P1|FakeAsset|<FakeAsset assetId='P1'>TEST 1</FakeAsset>");
   ASSERT_EQ((unsigned int)1, storage->getCount());
 
   m_agentTestHelper->m_adapter->processData(
-      "2021-02-01T12:00:00Z|@ASSET@|P2|Part|<Part assetId='P2'>TEST 2</Part>");
+      "2021-02-01T12:00:00Z|@ASSET@|P2|FakeAsset|<FakeAsset assetId='P2'>TEST 2</FakeAsset>");
   ASSERT_EQ((unsigned int)2, storage->getCount());
 
   m_agentTestHelper->m_adapter->processData(
-      "2021-02-01T12:00:00Z|@ASSET@|P3|Part|<Part assetId='P3'>TEST 3</Part>");
+      "2021-02-01T12:00:00Z|@ASSET@|P3|FakeAsset|<FakeAsset assetId='P3'>TEST 3</FakeAsset>");
   ASSERT_EQ((unsigned int)3, storage->getCount());
 
   {
     PARSE_XML_RESPONSE("/current");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged", "P3");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged@assetType", "Part");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged@assetType", "FakeAsset");
   }
 
   m_agentTestHelper->m_adapter->processData("2021-02-01T12:00:00Z|@REMOVE_ASSET@|P2\r");
@@ -571,7 +571,7 @@ TEST_F(AgentAssetTest, should_handle_asset_removal_from_adapter)
   {
     PARSE_XML_RESPONSE("/current");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetRemoved", "P2");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetRemoved@assetType", "Part");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetRemoved@assetType", "FakeAsset");
   }
 
   {
@@ -650,15 +650,15 @@ TEST_F(AgentAssetTest, AssetPrependId)
   const auto &storage = agent->getAssetStorage();
 
   m_agentTestHelper->m_adapter->processData(
-      "2021-02-01T12:00:00Z|@ASSET@|@1|Part|<Part assetId='1'>TEST 1</Part>");
+      "2021-02-01T12:00:00Z|@ASSET@|@1|FakeAsset|<FakeAsset assetId='1'>TEST 1</FakeAsset>");
   ASSERT_EQ((unsigned int)4, storage->getMaxAssets());
   ASSERT_EQ((unsigned int)1, storage->getCount());
 
   {
     PARSE_XML_RESPONSE("/asset/0001");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@assetCount", "1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part", "TEST 1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Part@assetId", "0001");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset", "TEST 1");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:FakeAsset@assetId", "0001");
   }
 }
 
@@ -671,13 +671,13 @@ TEST_F(AgentAssetTest, should_remove_changed_asset)
   ASSERT_EQ((unsigned int)4, storage->getMaxAssets());
 
   m_agentTestHelper->m_adapter->processData(
-      "2021-02-01T12:00:00Z|@ASSET@|P1|Part|<Part assetId='P1'>TEST 1</Part>");
+      "2021-02-01T12:00:00Z|@ASSET@|P1|FakeAsset|<FakeAsset assetId='P1'>TEST 1</FakeAsset>");
   ASSERT_EQ((unsigned int)1, storage->getCount());
 
   {
     PARSE_XML_RESPONSE("/current");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged", "P1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged@assetType", "Part");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged@assetType", "FakeAsset");
   }
 
   m_agentTestHelper->m_adapter->processData("2021-02-01T12:00:00Z|@REMOVE_ASSET@|P1");
@@ -686,9 +686,9 @@ TEST_F(AgentAssetTest, should_remove_changed_asset)
   {
     PARSE_XML_RESPONSE("/current");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetRemoved", "P1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetRemoved@assetType", "Part");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetRemoved@assetType", "FakeAsset");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged", "UNAVAILABLE");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged@assetType", "Part");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged@assetType", "FakeAsset");
   }
 }
 
@@ -703,26 +703,26 @@ TEST_F(AgentAssetTest, should_remove_changed_observation_asset_in_2_6)
   ASSERT_EQ((unsigned int)4, storage->getMaxAssets());
 
   m_agentTestHelper->m_adapter->processData(
-      "2021-02-01T12:00:00Z|@ASSET@|P1|Part|<Part assetId='P1'>TEST 1</Part>");
+      "2021-02-01T12:00:00Z|@ASSET@|P1|FakeAsset|<FakeAsset assetId='P1'>TEST 1</FakeAsset>");
   ASSERT_EQ((unsigned int)1, storage->getCount());
 
   {
     PARSE_XML_RESPONSE("/LinuxCNC/current");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetAdded", "P1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetAdded@assetType", "Part");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetAdded@assetType", "FakeAsset");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged", "UNAVAILABLE");
   }
 
   m_agentTestHelper->m_adapter->processData(
-      "2021-02-01T12:00:00Z|@ASSET@|P1|Part|<Part assetId='P1'>TEST 2</Part>");
+      "2021-02-01T12:00:00Z|@ASSET@|P1|FakeAsset|<FakeAsset assetId='P1'>TEST 2</FakeAsset>");
   ASSERT_EQ((unsigned int)1, storage->getCount());
 
   {
     PARSE_XML_RESPONSE("/LinuxCNC/current");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged", "P1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged@assetType", "Part");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged@assetType", "FakeAsset");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetAdded", "UNAVAILABLE");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetAdded@assetType", "Part");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetAdded@assetType", "FakeAsset");
   }
 }
 
@@ -737,13 +737,13 @@ TEST_F(AgentAssetTest, should_remove_added_asset_observation_in_2_6)
   ASSERT_EQ((unsigned int)4, storage->getMaxAssets());
 
   m_agentTestHelper->m_adapter->processData(
-      "2021-02-01T12:00:00Z|@ASSET@|P1|Part|<Part assetId='P1'>TEST 1</Part>");
+      "2021-02-01T12:00:00Z|@ASSET@|P1|FakeAsset|<FakeAsset assetId='P1'>TEST 1</FakeAsset>");
   ASSERT_EQ((unsigned int)1, storage->getCount());
 
   {
     PARSE_XML_RESPONSE("/LinuxCNC/current");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetAdded", "P1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetAdded@assetType", "Part");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetAdded@assetType", "FakeAsset");
   }
 
   m_agentTestHelper->m_adapter->processData("2021-02-01T12:00:00Z|@REMOVE_ASSET@|P1");
@@ -752,9 +752,9 @@ TEST_F(AgentAssetTest, should_remove_added_asset_observation_in_2_6)
   {
     PARSE_XML_RESPONSE("/LinuxCNC/current");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetRemoved", "P1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetRemoved@assetType", "Part");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetRemoved@assetType", "FakeAsset");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetAdded", "UNAVAILABLE");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetAdded@assetType", "Part");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetAdded@assetType", "FakeAsset");
   }
 }
 
@@ -767,13 +767,13 @@ TEST_F(AgentAssetTest, should_remove_asset_using_http_delete)
   ASSERT_EQ((unsigned int)4, storage->getMaxAssets());
 
   m_agentTestHelper->m_adapter->processData(
-      "2021-02-01T12:00:00Z|@ASSET@|P1|Part|<Part assetId='P1'>TEST 1</Part>");
+      "2021-02-01T12:00:00Z|@ASSET@|P1|FakeAsset|<FakeAsset assetId='P1'>TEST 1</FakeAsset>");
   ASSERT_EQ((unsigned int)1, storage->getCount(false));
 
   {
     PARSE_XML_RESPONSE("/current");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged", "P1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged@assetType", "Part");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged@assetType", "FakeAsset");
   }
 
   {
@@ -783,7 +783,7 @@ TEST_F(AgentAssetTest, should_remove_asset_using_http_delete)
   {
     PARSE_XML_RESPONSE("/current");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetRemoved", "P1");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetRemoved@assetType", "Part");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetRemoved@assetType", "FakeAsset");
   }
 }
 
@@ -820,32 +820,32 @@ TEST_F(AgentAssetTest, should_remove_all_assets)
   ASSERT_EQ((unsigned int)4, storage->getMaxAssets());
 
   m_agentTestHelper->m_adapter->processData(
-      "2021-02-01T12:00:00Z|@ASSET@|P1|Part|<Part assetId='P1'>TEST 1</Part>");
+      "2021-02-01T12:00:00Z|@ASSET@|P1|FakeAsset|<FakeAsset assetId='P1'>TEST 1</FakeAsset>");
   ASSERT_EQ((unsigned int)1, storage->getCount());
 
   m_agentTestHelper->m_adapter->processData(
-      "2021-02-01T12:00:00Z|@ASSET@|P2|Part|<Part assetId='P2'>TEST 2</Part>");
+      "2021-02-01T12:00:00Z|@ASSET@|P2|FakeAsset|<FakeAsset assetId='P2'>TEST 2</FakeAsset>");
   ASSERT_EQ((unsigned int)2, storage->getCount());
 
   m_agentTestHelper->m_adapter->processData(
-      "2021-02-01T12:00:00Z|@ASSET@|P3|Part|<Part assetId='P3'>TEST 3</Part>");
+      "2021-02-01T12:00:00Z|@ASSET@|P3|FakeAsset|<FakeAsset assetId='P3'>TEST 3</FakeAsset>");
   ASSERT_EQ((unsigned int)3, storage->getCount());
 
   {
     PARSE_XML_RESPONSE("/current");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged", "P3");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged@assetType", "Part");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged@assetType", "FakeAsset");
   }
 
-  m_agentTestHelper->m_adapter->processData("2021-02-01T12:00:00Z|@REMOVE_ALL_ASSETS@|Part");
+  m_agentTestHelper->m_adapter->processData("2021-02-01T12:00:00Z|@REMOVE_ALL_ASSETS@|FakeAsset");
   ASSERT_EQ((unsigned int)3, storage->getCount(false));
 
   {
     PARSE_XML_RESPONSE("/current");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetRemoved", "P3");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetRemoved@assetType", "Part");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetRemoved@assetType", "FakeAsset");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged", "UNAVAILABLE");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged@assetType", "Part");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetChanged@assetType", "FakeAsset");
   }
 
   ASSERT_EQ((unsigned int)0, storage->getCount());
@@ -871,12 +871,12 @@ TEST_F(AgentAssetTest, should_remove_all_assets)
 TEST_F(AgentAssetTest, probe_should_have_the_asset_counts)
 {
   auto agent = m_agentTestHelper->createAgent("/samples/test_config.xml", 8, 4, "1.3", 4, true);
-  string body = "<Part assetId='P1'>TEST 1</Part>";
+  string body = "<FakeAsset assetId='P1'>TEST 1</FakeAsset>";
   QueryMap queries;
   const auto &storage = agent->getAssetStorage();
 
   queries["device"] = "LinuxCNC";
-  queries["type"] = "Part";
+  queries["type"] = "FakeAsset";
 
   {
     PARSE_XML_RESPONSE_PUT("/asset", body, queries);
@@ -889,7 +889,7 @@ TEST_F(AgentAssetTest, probe_should_have_the_asset_counts)
 
   {
     PARSE_XML_RESPONSE("/probe");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:Header/m:AssetCounts/m:AssetCount@assetType", "Part");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:Header/m:AssetCounts/m:AssetCount@assetType", "FakeAsset");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header/m:AssetCounts/m:AssetCount", "2");
   }
 }
@@ -963,21 +963,21 @@ TEST_F(AgentAssetTest, update_asset_count_data_item_v2_0)
   addAdapter();
 
   m_agentTestHelper->m_adapter->processData(
-      "2021-02-01T12:00:00Z|@ASSET@|P1|Part|<Part assetId='P1'>TEST 1</Part>");
+      "2021-02-01T12:00:00Z|@ASSET@|P1|FakeAsset|<FakeAsset assetId='P1'>TEST 1</FakeAsset>");
 
   {
     PARSE_XML_RESPONSE("/LinuxCNC/current");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry@key", "Part");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='Part']", "1");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry@key", "FakeAsset");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='FakeAsset']", "1");
   }
 
   m_agentTestHelper->m_adapter->processData(
-      "2021-02-01T12:00:00Z|@ASSET@|P2|Part|<Part assetId='P2'>TEST 1</Part>");
+      "2021-02-01T12:00:00Z|@ASSET@|P2|FakeAsset|<FakeAsset assetId='P2'>TEST 1</FakeAsset>");
 
   {
     PARSE_XML_RESPONSE("/LinuxCNC/current");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry@key", "Part");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='Part']", "2");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry@key", "FakeAsset");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='FakeAsset']", "2");
   }
 
   m_agentTestHelper->m_adapter->processData(
@@ -985,7 +985,7 @@ TEST_F(AgentAssetTest, update_asset_count_data_item_v2_0)
 
   {
     PARSE_XML_RESPONSE("/LinuxCNC/current");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='Part']", "2");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='FakeAsset']", "2");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='Tool']", "1");
   }
 
@@ -994,7 +994,7 @@ TEST_F(AgentAssetTest, update_asset_count_data_item_v2_0)
 
   {
     PARSE_XML_RESPONSE("/LinuxCNC/current");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='Part']", "2");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='FakeAsset']", "2");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='Tool']", "2");
   }
 
@@ -1003,7 +1003,7 @@ TEST_F(AgentAssetTest, update_asset_count_data_item_v2_0)
 
   {
     PARSE_XML_RESPONSE("/LinuxCNC/current");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='Part']", "2");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='FakeAsset']", "2");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='Tool']", "3");
   }
 
@@ -1011,7 +1011,7 @@ TEST_F(AgentAssetTest, update_asset_count_data_item_v2_0)
 
   {
     PARSE_XML_RESPONSE("/LinuxCNC/current");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='Part']", "1");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='FakeAsset']", "1");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='Tool']", "3");
   }
 
@@ -1019,7 +1019,7 @@ TEST_F(AgentAssetTest, update_asset_count_data_item_v2_0)
 
   {
     PARSE_XML_RESPONSE("/LinuxCNC/current");
-    ASSERT_XML_PATH_COUNT(doc, "//m:AssetCountDataSet/m:Entry[@key='Part']", 0);
+    ASSERT_XML_PATH_COUNT(doc, "//m:AssetCountDataSet/m:Entry[@key='FakeAsset']", 0);
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='Tool']", "3");
   }
 
@@ -1035,12 +1035,12 @@ TEST_F(AgentAssetTest, asset_count_should_not_occur_in_header_post_20)
 {
   auto agent = m_agentTestHelper->createAgent("/samples/test_config.xml", 8, 4, "2.0", 4, true);
 
-  string body = "<Part assetId='P1'>TEST 1</Part>";
+  string body = "<FakeAsset assetId='P1'>TEST 1</FakeAsset>";
   QueryMap queries;
   const auto &storage = agent->getAssetStorage();
 
   queries["device"] = "LinuxCNC";
-  queries["type"] = "Part";
+  queries["type"] = "FakeAsset";
 
   {
     PARSE_XML_RESPONSE_PUT("/asset", body, queries);
@@ -1061,12 +1061,12 @@ TEST_F(AgentAssetTest, asset_count_should_track_asset_additions_by_type)
 {
   auto agent = m_agentTestHelper->createAgent("/samples/test_config.xml", 8, 4, "2.0", 4, true);
 
-  string body1 = "<Part assetId='P1'>TEST 1</Part>";
+  string body1 = "<FakeAsset assetId='P1'>TEST 1</FakeAsset>";
   QueryMap queries;
   const auto &storage = agent->getAssetStorage();
 
   queries["device"] = "LinuxCNC";
-  queries["type"] = "Part";
+  queries["type"] = "FakeAsset";
 
   {
     PARSE_XML_RESPONSE_PUT("/asset", body1, queries);
@@ -1075,7 +1075,7 @@ TEST_F(AgentAssetTest, asset_count_should_track_asset_additions_by_type)
 
   {
     PARSE_XML_RESPONSE("/LinuxCNC/current");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='Part']", "1");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='FakeAsset']", "1");
   }
 
   string body2 = "<PartThing assetId='P2'>TEST 2</PartThing>";
@@ -1088,7 +1088,7 @@ TEST_F(AgentAssetTest, asset_count_should_track_asset_additions_by_type)
 
   {
     PARSE_XML_RESPONSE("/LinuxCNC/current");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='Part']", "1");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='FakeAsset']", "1");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='PartThing']", "1");
   }
 
@@ -1098,7 +1098,7 @@ TEST_F(AgentAssetTest, asset_count_should_track_asset_additions_by_type)
   }
   {
     PARSE_XML_RESPONSE("/LinuxCNC/current");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='Part']", "1");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='FakeAsset']", "1");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='PartThing']", "2");
   }
 
@@ -1110,7 +1110,7 @@ TEST_F(AgentAssetTest, asset_count_should_track_asset_additions_by_type)
   }
   {
     PARSE_XML_RESPONSE("/LinuxCNC/current");
-    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='Part']", "1");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='FakeAsset']", "1");
     ASSERT_XML_PATH_EQUAL(doc, "//m:AssetCountDataSet/m:Entry[@key='PartThing']", "1");
   }
 }
@@ -1119,7 +1119,7 @@ TEST_F(AgentAssetTest, asset_should_also_work_using_post_with_assets)
 {
   auto agent = m_agentTestHelper->createAgent("/samples/test_config.xml", 8, 4, "2.0", 4, true);
 
-  string body = "<Part assetId='P1'>TEST 1</Part>";
+  string body = "<FakeAsset assetId='P1'>TEST 1</FakeAsset>";
   QueryMap queries;
   const auto &storage = agent->getAssetStorage();
 

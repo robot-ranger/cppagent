@@ -148,6 +148,14 @@ namespace mtconnect {
       /// @return `true` if this is a table
       bool isTable(const std::string &name) const { return m_tables.count(name) > 0; }
 
+      /// @brief is the value of this entity a data set or table
+      /// @returns `true` if the value is a data set or table
+      bool isValueDataSet() const { return m_isValueDataSet; }
+
+      /// @brief is the value of this entity a  table
+      /// @returns `true` if the value is a table
+      bool isValueTable() const { return m_isValueTable; }
+
       /// @brief get the requirement pointer for a key
       /// @param name the property key
       /// @return requirement pointer
@@ -390,9 +398,15 @@ namespace mtconnect {
           }
           else if (BaseValueType(r.getType()) == ValueType::DATA_SET)
           {
+            if (r.getName() == "VALUE")
+              m_isValueDataSet = true;
             m_dataSets.insert(r.getName());
             if (r.getType() == ValueType::TABLE)
+            {
               m_tables.insert(r.getName());
+              if (r.getName() == "VALUE")
+                m_isValueTable = true;
+            }
           }
           else
           {
@@ -443,6 +457,8 @@ namespace mtconnect {
       size_t m_minListSize {0};
       bool m_hasRaw {false};
       bool m_any {false};
+      bool m_isValueDataSet {false};
+      bool m_isValueTable {false};
 
       std::set<std::string> m_propertySets;
       std::set<std::string> m_dataSets;

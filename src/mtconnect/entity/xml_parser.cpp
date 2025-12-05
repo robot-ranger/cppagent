@@ -225,6 +225,11 @@ namespace mtconnect::entity {
         if (holds_alternative<string>(value))
           properties.insert({"RAW", value});
       }
+      else if (ef->isValueDataSet())
+      {
+        auto ds = &properties["VALUE"].emplace<DataSet>();
+        parseDataSet<DataSet, DataSetValue>(node, *ds, ef->isValueTable());
+      }
       else
       {
         int orderCount = 0;
