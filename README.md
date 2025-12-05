@@ -44,16 +44,18 @@ By handling multiple adapters, buffering high-frequency data, supporting secure 
 ### 🔌 Wide Input Support
 - SHDR adapters for CNC interoperability  
 - MQTT ingestion for IoT environments  
-- Native JSON input for modern sensors and custom connectors  
+  - Native JSON input for modern sensors and custom connectors
+  - Customizable JSON handling for propriatary models
 
 ### 🌐 Flexible Output Options
 - HTTP server for `/probe`, `/current`, `/sample`, `/assets`
 - WebSocket streaming for real-time dashboards
-- TLS support for secure communication  
+- TLS support for secure communication
+- MQTT output using flattended or hierarchial topics
 
 ### 🧠 Extensibility
 - Ruby-based scripting for custom transformation pipelines  
-- Modular components allowing custom adapters  
+- Modular components allowing custom adapters and output
 - Namespace support for extended functionality  
 
 ### ⚙️ Industrial-Grade Infrastructure
@@ -67,24 +69,24 @@ By handling multiple adapters, buffering high-frequency data, supporting secure 
 The agent transforms heterogeneous raw machine signals into structured, queryable MTConnect data streams. This architecture ensures consistent data modeling regardless of vendor or device type.
 
 ```
-              +-------------------------+
-              |      Client Layer       |
-              |  MES, Dashboards, Apps  |
-              +-----------+-------------+
-                          |
-                HTTP / WebSockets / TLS
-                          |
-               +----------v----------+
-               |   MTConnect Agent   |
-               |   (C++ Reference)   |
-               +-----+--------+------+
-                     |        |
+              ┌─────────────────────────┐
+              │      Client Layer       │
+              │  MES, Dashboards, Apps  │
+              └──────────┬──────────────┘
+                         │
+            HTTP / WebSockets / TLS / MQTT
+                         │
+               ┌─────────┴───────────┐
+               │   MTConnect Agent   │
+               │   (C++ Reference)   │
+               └─────┬────────┬──────┘
+                     │        │
         Normalization &    Buffering
-                     |
-      +--------------+-----------------+
-      |                                |
+                     │
+      ┌──────────────┴─────────────────┐
+      │                                │
    SHDR Adapters                     MQTT Broker
-      |                                |
+      │                                │
 Raw Machine Signals         Sensor/Device Messages
 ```
 
@@ -134,7 +136,41 @@ Adapters {
 
 # 🛠 Installation
 
+> **Note: We may want start with the download and install instructions, most people are not developers.**
+
+<details>
+<summary><b>Downloading Pre-Built Binaries</b></summary>
+Pre-built binaries for Windows and Linux platforms are available on the [Releases](https://github.com/mtconnect/cppagent/releases) page.
+
+## Instructions for using Windows Binaries
+1. Download the latest `.zip` release for Windows.
+2. Extract the contents to a desired location.
+3. Open a Command Prompt and navigate to the extracted folder.
+4. Run the agent with a configuration file:
+   ```powershell
+   .\agent.exe run agent.cfg
+   ```
+</details>
+<br/>
+
+<details>
+<summary><b>Building From Source</b></summary>
 The agent uses CMake + Conan for dependency management, making cross-platform builds consistent.
+
+> Note: I think there is an easier way of doing this. You can create a release zip file with cpack and all the dependencies if needed. 
+>
+> See the docker files for examples:
+> ```bash
+>  && conan create cppagent \
+>       --build=missing \
+>       -o cpack=True \
+>       -o "cpack_destination=$HOME/agent" \
+>       -o cpack_name=dist \
+>       -o cpack_generator=TGZ \
+>       -pr "$CONAN_PROFILE" \
+>       ${WITH_TESTS_ARG} \
+```
+
 
 ## Linux Build
 Install prerequisites:
@@ -161,7 +197,7 @@ cmake --build build-release --config Release
 
 ---
 
-## macOS Build
+## macOS Build 
 macOS is ideal for development and prototyping.
 ```bash
 brew install cmake openssl conan
@@ -169,6 +205,7 @@ conan install . --build=missing
 cmake --preset conan-release
 cmake --build build-release
 ```
+</details>
 
 ---
 
@@ -221,9 +258,18 @@ Use this when:
 Example:
 ```
 Adapters {
-  Mill1 { Host = 10.0.0.10 Port = 7878 }
-  Lathe1 { Host = 10.0.0.20 Port = 7879 }
-  Router { Host = router.local Port = 9000 }
+  Mill1 { 
+    Host = 10.0.0.10 
+    Port = 7878 
+  }
+  Lathe1 { 
+    Host = 10.0.0.20 
+    Port = 7879 
+  }
+  Router { 
+    Host = router.local 
+    Port = 9000 
+  }
 }
 ```
 
@@ -265,7 +311,7 @@ Use MQTT when:
 
 The agent requires the broker address, topics, and connection details:
 ```
-Mqtt2Service {
+MqttService {
   Host = tcp://broker:1883
   Topics = factory/mtconnect/#
   ClientId = agent01
@@ -287,12 +333,14 @@ Ruby extensions allow you to customize how data is processed by the agent before
 
 The agent loads Ruby scripts from a directory:
 ```
-RubyScriptPath = scripts
+Ruby {
+  module = mymodule.rb
+}
 ```
 
 You can then write Ruby code that hooks into processing events.
 
-## SHDR (Serial Hierarchical Data Representation)
+## SHDR (Simple Hierarchical Data Representation)
 
 ### What SHDR Is
 SHDR is the original MTConnect-defined line-based protocol for transmitting machine state and data items. It streams information as timestamped key-value pairs over a plain TCP connection. It is simple, deterministic, and extremely reliable — which is why it continues to be the standard for CNC machine adapters.
@@ -319,7 +367,8 @@ Choose SHDR if:
 |-------|--------|----------|
 | SHDR | CNC & legacy equipment | Most common MTConnect adapter input |
 | MQTT | IoT sensors, PLC networks, mixed devices | Requires broker & topic mapping |
-| JSON | Modern controllers or software-only adapters | Human-readable, flexible format |
+
+> Note: JSON is a representation, not a transport protocol. It can be used with MQTT.
 
 ### Documentation & Reference
 
@@ -331,7 +380,6 @@ Unlike MQTT or JSON, SHDR is not a general IoT messaging protocol. It only exist
 ```
 CNC → SHDR → Agent
 IoT Sensor → MQTT → Agent
-Software Device → JSON → Agent
 ```
 ---
 
@@ -366,14 +414,15 @@ These outputs comply with the MTConnect schema and can be validated using standa
 
 # 📁 Directory Structure
 
+> Note: What directory structure is this? Is this the repo or the deploy?
+
 ```
 cppagent/
 ├── agent/
 ├── adapters/
-├── mqtt/
 ├── scripts/
 ├── test/
-├── samples/
+└── samples/
 └── web/
 ```
 
@@ -404,6 +453,8 @@ This repository typically follows GitHub Flow:
 5. Submit PR  
 
 ---
+
+> Note: We need to have links to the configuration docs for all the options. We can reference the wiki.
 
 # 📝 Version History
 
