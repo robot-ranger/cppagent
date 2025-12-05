@@ -130,7 +130,7 @@ namespace mtconnect::entity {
     };
 
     /// @brief A set of data set entries
-    /// @tparam EV the entry type for the set, must have < operator.
+    /// @tparam ET the entry type for the set, must have < operator.
     template <typename ET>
     class Set : public std::set<ET>
     {

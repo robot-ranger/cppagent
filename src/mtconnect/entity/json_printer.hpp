@@ -47,8 +47,15 @@ namespace mtconnect::entity {
         bool isPropertyList = *m_key != "LIST";
         if (m_entity->hasListWithAttribute())
         {
-          m_obj->Key("list");
-          m_printer.printEntityList(arg);
+          if (m_printer.m_version == 1)
+          {
+            m_obj->Key("list");
+            m_printer.printEntityList(arg);
+          }
+          else
+          {
+            m_printer.printEntityList(arg, true);
+          }
         }
         else if (isPropertyList)
         {
@@ -147,12 +154,12 @@ namespace mtconnect::entity {
     /// @param[in] list a list of EntityPtr objects
     /// @tparam T2 Type of iterable collection must contain Entity subclass
     template <typename T2>
-    void printEntityList(const T2 &list)
+    void printEntityList(const T2 &list, bool embed = false)
     {
       if (m_version == 1)
         printEntityList1(list);
       else if (m_version == 2)
-        printEntityList2(list);
+        printEntityList2(list, embed);
       else
         throw std::runtime_error("Invalid json printer version");
     }
@@ -184,9 +191,9 @@ namespace mtconnect::entity {
     /// @param[in] list a list of EntityPtr objects
     /// @tparam T2 Type of iterable collection must contain Entity subclass
     template <typename T2>
-    void printEntityList2(const T2 &list)
+    void printEntityList2(const T2 &list, bool embed = false)
     {
-      AutoJsonObject obj(m_writer);
+      AutoJsonObject obj(m_writer, !embed);
       // Sort the entities by name, use a string view so we don't copy
       std::multimap<std::string_view, EntityPtr> entities;
       for (auto &e : list)
