@@ -486,17 +486,12 @@ namespace mtconnect {
             }
             else
             {
-              // If this static assertion fails, a new type has been added to ConfigOption
-              // and needs to be handled in the visitor
-              static_assert(std::is_same_v<T, std::monostate> ||
-                          std::is_same_v<T, bool> ||
-                          std::is_same_v<T, int> ||
-                          std::is_same_v<T, double> ||
-                          std::is_same_v<T, std::string> ||
-                          std::is_same_v<T, Seconds> ||
-                          std::is_same_v<T, Milliseconds> ||
-                          std::is_same_v<T, StringList>,
-                          "Unhandled type in ConfigOption variant");
+              // If compilation fails here, a new type has been added to ConfigOption
+              // and needs to be handled above
+              []<bool flag = false>()
+              {
+                static_assert(flag, "Unhandled type in ConfigOption variant");
+              }();
             }
           }, value);
         }

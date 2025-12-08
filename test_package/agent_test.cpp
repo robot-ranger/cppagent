@@ -29,6 +29,8 @@
 #include <stdexcept>
 #include <thread>
 
+#include <nlohmann/json.hpp>
+
 #include "agent_test_helper.hpp"
 #include "mtconnect/agent.hpp"
 #include "mtconnect/asset/file_asset.hpp"
