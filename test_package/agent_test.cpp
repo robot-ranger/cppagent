@@ -29,6 +29,8 @@
 #include <stdexcept>
 #include <thread>
 
+#include <nlohmann/json.hpp>
+
 #include "agent_test_helper.hpp"
 #include "mtconnect/agent.hpp"
 #include "mtconnect/asset/file_asset.hpp"
@@ -2621,4 +2623,30 @@ TEST_F(AgentTest, should_initialize_observaton_to_initial_value_when_available)
     PARSE_XML_RESPONSE("/current");
     ASSERT_XML_PATH_EQUAL(doc, "//m:DeviceStream//m:PartCount", "0");
   }
+}
+
+TEST_F(AgentTest, should_return_agent_configuration)
+{
+  m_agentTestHelper->createAgent("/samples/test_config.xml", 8, 4, "2.6", 4, false);
+  
+  // Test the /config endpoint
+  auto session = m_agentTestHelper->m_server->createSession(m_agentTestHelper->m_context);
+  auto request = make_unique<Request>("/config", boost::beast::http::verb::get);
+  
+  auto routing = m_agentTestHelper->m_server->getRouting(request->m_path, request->m_verb);
+  ASSERT_TRUE(routing);
+  
+  routing->m_handler(session, std::move(request));
+  
+  // Verify response is JSON
+  ASSERT_EQ(session->m_mimeType, "application/json");
+  ASSERT_EQ(session->m_code, boost::beast::http::status::ok);
+  
+  // Parse JSON response
+  auto json = nlohmann::json::parse(session->m_body);
+  
+  // Verify key configuration values are present
+  ASSERT_TRUE(json.contains("Port"));
+  ASSERT_TRUE(json.contains("BufferSize"));
+  ASSERT_TRUE(json.contains("SchemaVersion"));
 }

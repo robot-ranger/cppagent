@@ -19,6 +19,8 @@
 
 #include <regex>
 
+#include <nlohmann/json.hpp>
+
 #include "error.hpp"
 #include "mtconnect/configuration/config_options.hpp"
 #include "mtconnect/entity/xml_parser.hpp"
@@ -118,6 +120,7 @@ namespace mtconnect {
       createAssetRoutings();
       createProbeRoutings();
       createPutObservationRoutings();
+      createConfigRoutings();
       createFileRoutings();
       m_server->addCommands();
 
@@ -433,6 +436,77 @@ namespace mtconnect {
     {
       response->m_requestId = id;
       session->writeResponse(std::move(response));
+    }
+
+    void RestService::createConfigRoutings()
+    {
+      using namespace rest_sink;
+      using json = nlohmann::json;
+      
+      auto handler = [this](SessionPtr session, const RequestPtr request) -> bool {
+        // Build JSON response with agent configuration
+        json config;
+        
+        for (const auto& [key, value] : m_options)
+        {
+          // Handle different variant types
+          std::visit([&config, &key](auto&& arg) {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, std::monostate>)
+            {
+              config[key] = nullptr;
+            }
+            else if constexpr (std::is_same_v<T, bool>)
+            {
+              config[key] = arg;
+            }
+            else if constexpr (std::is_same_v<T, int>)
+            {
+              config[key] = arg;
+            }
+            else if constexpr (std::is_same_v<T, double>)
+            {
+              config[key] = arg;
+            }
+            else if constexpr (std::is_same_v<T, std::string>)
+            {
+              config[key] = arg;
+            }
+            else if constexpr (std::is_same_v<T, Seconds>)
+            {
+              config[key] = arg.count();
+            }
+            else if constexpr (std::is_same_v<T, Milliseconds>)
+            {
+              config[key] = arg.count();
+            }
+            else if constexpr (std::is_same_v<T, StringList>)
+            {
+              config[key] = arg;
+            }
+            else
+            {
+              // If compilation fails here, a new type has been added to ConfigOption
+              // and needs to be handled above
+              []<bool flag = false>()
+              {
+                static_assert(flag, "Unhandled type in ConfigOption variant");
+              }();
+            }
+          }, value);
+        }
+        
+        ResponsePtr response = make_unique<Response>(
+            rest_sink::status::ok, config.dump(), "application/json");
+        respond(session, std::move(response), request->m_requestId);
+        return true;
+      };
+      
+      m_server
+          ->addRouting({boost::beast::http::verb::get, "/config", handler})
+          .document("Agent configuration request",
+                    "Returns the current agent configuration as JSON")
+          .command("config");
     }
 
     void RestService::createFileRoutings()
