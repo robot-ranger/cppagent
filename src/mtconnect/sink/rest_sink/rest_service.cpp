@@ -118,6 +118,7 @@ namespace mtconnect {
       createAssetRoutings();
       createProbeRoutings();
       createPutObservationRoutings();
+      createConfigRoutings();
       createFileRoutings();
       m_server->addCommands();
 
@@ -433,6 +434,87 @@ namespace mtconnect {
     {
       response->m_requestId = id;
       session->writeResponse(std::move(response));
+    }
+
+    void RestService::createConfigRoutings()
+    {
+      using namespace rest_sink;
+      auto handler = [&](SessionPtr session, const RequestPtr request) -> bool {
+        auto pretty = request->parameter<bool>("pretty").value_or(false);
+        
+        // Build JSON response with agent configuration
+        std::stringstream json;
+        json << "{";
+        
+        bool first = true;
+        for (const auto& [key, value] : m_options)
+        {
+          if (!first)
+            json << ",";
+          first = false;
+          
+          json << "\"" << key << "\":";
+          
+          // Handle different variant types
+          std::visit([&json](auto&& arg) {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, std::monostate>)
+            {
+              json << "null";
+            }
+            else if constexpr (std::is_same_v<T, bool>)
+            {
+              json << (arg ? "true" : "false");
+            }
+            else if constexpr (std::is_same_v<T, int>)
+            {
+              json << arg;
+            }
+            else if constexpr (std::is_same_v<T, double>)
+            {
+              json << arg;
+            }
+            else if constexpr (std::is_same_v<T, std::string>)
+            {
+              json << "\"" << arg << "\"";
+            }
+            else if constexpr (std::is_same_v<T, Seconds>)
+            {
+              json << arg.count();
+            }
+            else if constexpr (std::is_same_v<T, Milliseconds>)
+            {
+              json << arg.count();
+            }
+            else if constexpr (std::is_same_v<T, StringList>)
+            {
+              json << "[";
+              bool firstItem = true;
+              for (const auto& item : arg)
+              {
+                if (!firstItem)
+                  json << ",";
+                firstItem = false;
+                json << "\"" << item << "\"";
+              }
+              json << "]";
+            }
+          }, value);
+        }
+        
+        json << "}";
+        
+        ResponsePtr response = make_unique<Response>(
+            rest_sink::status::ok, json.str(), "application/json");
+        respond(session, std::move(response), request->m_requestId);
+        return true;
+      };
+      
+      m_server
+          ->addRouting({boost::beast::http::verb::get, "/config?pretty={bool:false}", handler})
+          .document("Agent configuration request",
+                    "Returns the current agent configuration as JSON")
+          .command("config");
     }
 
     void RestService::createFileRoutings()

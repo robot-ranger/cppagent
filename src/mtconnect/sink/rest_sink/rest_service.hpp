@@ -346,6 +346,8 @@ namespace mtconnect {
 
       void createAssetRoutings();
 
+      void createConfigRoutings();
+
       // Current Data Collection
       std::string fetchCurrentData(const printer::Printer *printer, const FilterSetOpt &filterSet,
                                    const std::optional<SequenceNumber_t> &at, bool pretty = false,
