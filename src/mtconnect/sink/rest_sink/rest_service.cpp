@@ -443,7 +443,7 @@ namespace mtconnect {
       using namespace rest_sink;
       using json = nlohmann::json;
       
-      auto handler = [&](SessionPtr session, const RequestPtr request) -> bool {
+      auto handler = [this](SessionPtr session, const RequestPtr request) -> bool {
         // Build JSON response with agent configuration
         json config;
         
@@ -483,6 +483,20 @@ namespace mtconnect {
             else if constexpr (std::is_same_v<T, StringList>)
             {
               config[key] = arg;
+            }
+            else
+            {
+              // If this static assertion fails, a new type has been added to ConfigOption
+              // and needs to be handled in the visitor
+              static_assert(std::is_same_v<T, std::monostate> ||
+                          std::is_same_v<T, bool> ||
+                          std::is_same_v<T, int> ||
+                          std::is_same_v<T, double> ||
+                          std::is_same_v<T, std::string> ||
+                          std::is_same_v<T, Seconds> ||
+                          std::is_same_v<T, Milliseconds> ||
+                          std::is_same_v<T, StringList>,
+                          "Unhandled type in ConfigOption variant");
             }
           }, value);
         }
