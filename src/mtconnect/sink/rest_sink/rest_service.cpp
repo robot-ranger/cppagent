@@ -19,6 +19,8 @@
 
 #include <regex>
 
+#include <nlohmann/json.hpp>
+
 #include "error.hpp"
 #include "mtconnect/configuration/config_options.hpp"
 #include "mtconnect/entity/xml_parser.hpp"
@@ -439,79 +441,60 @@ namespace mtconnect {
     void RestService::createConfigRoutings()
     {
       using namespace rest_sink;
+      using json = nlohmann::json;
+      
       auto handler = [&](SessionPtr session, const RequestPtr request) -> bool {
-        auto pretty = request->parameter<bool>("pretty").value_or(false);
-        
         // Build JSON response with agent configuration
-        std::stringstream json;
-        json << "{";
+        json config;
         
-        bool first = true;
         for (const auto& [key, value] : m_options)
         {
-          if (!first)
-            json << ",";
-          first = false;
-          
-          json << "\"" << key << "\":";
-          
           // Handle different variant types
-          std::visit([&json](auto&& arg) {
+          std::visit([&config, &key](auto&& arg) {
             using T = std::decay_t<decltype(arg)>;
             if constexpr (std::is_same_v<T, std::monostate>)
             {
-              json << "null";
+              config[key] = nullptr;
             }
             else if constexpr (std::is_same_v<T, bool>)
             {
-              json << (arg ? "true" : "false");
+              config[key] = arg;
             }
             else if constexpr (std::is_same_v<T, int>)
             {
-              json << arg;
+              config[key] = arg;
             }
             else if constexpr (std::is_same_v<T, double>)
             {
-              json << arg;
+              config[key] = arg;
             }
             else if constexpr (std::is_same_v<T, std::string>)
             {
-              json << "\"" << arg << "\"";
+              config[key] = arg;
             }
             else if constexpr (std::is_same_v<T, Seconds>)
             {
-              json << arg.count();
+              config[key] = arg.count();
             }
             else if constexpr (std::is_same_v<T, Milliseconds>)
             {
-              json << arg.count();
+              config[key] = arg.count();
             }
             else if constexpr (std::is_same_v<T, StringList>)
             {
-              json << "[";
-              bool firstItem = true;
-              for (const auto& item : arg)
-              {
-                if (!firstItem)
-                  json << ",";
-                firstItem = false;
-                json << "\"" << item << "\"";
-              }
-              json << "]";
+              config[key] = arg;
             }
           }, value);
         }
         
-        json << "}";
-        
         ResponsePtr response = make_unique<Response>(
-            rest_sink::status::ok, json.str(), "application/json");
+            rest_sink::status::ok, config.dump(), "application/json");
         respond(session, std::move(response), request->m_requestId);
         return true;
       };
       
       m_server
-          ->addRouting({boost::beast::http::verb::get, "/config?pretty={bool:false}", handler})
+          ->addRouting({boost::beast::http::verb::get, "/config", handler})
           .document("Agent configuration request",
                     "Returns the current agent configuration as JSON")
           .command("config");
