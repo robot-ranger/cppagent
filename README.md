@@ -11,10 +11,7 @@ The agent supports multiple industrial communication models (SHDR, JSON, MQTT), 
 - [Key Features](#key-features)
 - [Architecture](#architecture)
 - [Quick Start](#quick-start)
-- [Installation](#installation)
-  - [Linux Build](#linux-build)
-  - [Windows Build](#windows-build)
-  - [macOS Build](#macos-build)
+- [Building From Source](#building-from-source)
 - [Basic Configuration](#basic-configuration)
 - [Advanced Configuration](#advanced-configuration)
   - [Multiple Adapters](#multiple-adapters)
@@ -100,16 +97,12 @@ This architecture is designed to be modular, allowing organizations to gradually
 
 This section helps developers get up and running with the agent in minutes.
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/mtconnect/cppagent.git
-cd cppagent
-```
+### 1. Downloading Pre-Built Binaries
+Pre-built binaries for Windows and Linux platforms are available on the [Releases](https://github.com/mtconnect/cppagent/releases) page.
 
-### 2. Build Using Conan
-```bash
-conan create . --build=missing
-```
+### 2. Instructions for using Windows Binaries
+1. Download the latest `.zip` release for Windows.
+2. Extract the contents to a desired location.
 
 ### 3. Create a Minimal Configuration
 ```txt
@@ -125,8 +118,8 @@ Adapters {
 ```
 
 ### 4. Run the Agent
-```bash
-./agent run agent.cfg
+```powershell
+C> agent.exe run agent.cfg
 ```
 
 ### 5. Verify Output
@@ -136,25 +129,13 @@ Adapters {
 
 ---
 
-# 🛠 Installation
+# 🛠 Building From Source
 
-> **Note: We may want start with the download and install instructions, most people are not developers.**
+[Wiki Page for Building From Source](https://github.com/mtconnect/cppagent/wiki/Building-From-Source)
 
-<details>
-<summary><b>Downloading Pre-Built Binaries</b></summary>
-Pre-built binaries for Windows and Linux platforms are available on the [Releases](https://github.com/mtconnect/cppagent/releases) page.
+---
 
-## Instructions for using Windows Binaries
-1. Download the latest `.zip` release for Windows.
-2. Extract the contents to a desired location.
-3. Open a Command Prompt and navigate to the extracted folder.
-4. Run the agent with a configuration file:
-   ```powershell
-   .\agent.exe run agent.cfg
-   ```
-</details>
-<br/>
-
+> Remove this section 
 <details>
 <summary><b>Building From Source</b></summary>
 The agent uses CMake + Conan for dependency management, making cross-platform builds consistent.
@@ -211,6 +192,11 @@ cmake --build build-release
 
 ---
 
+---
+
+> Continue Here
+---
+
 # 🔧 Basic Configuration
 
 The agent is controlled via two primary files:
@@ -231,8 +217,6 @@ Port = 5000
 AllowPut = true
 Buffersize = 131072
 ```
-
----
 
 # 🔧 Advanced Configuration
 
@@ -411,6 +395,565 @@ Shows buffered time series data.
 ```
 
 These outputs comply with the MTConnect schema and can be validated using standard tools.
+
+---
+# Configuration Parameters
+[Configuration Parameters Wiki Page](https://github.com/mtconnect/cppagent/wiki/Configuration-Parameters)
+<details>
+<summary>Configuration Parameters List</summary>
+---------
+
+### Top level configuration items ####
+
+* `AgentDeviceUUID` - Set the UUID of the agent device
+
+    *Default*: UUID derived from the IP address and port of the agent
+
+* `BufferSize` - The 2^X number of slots available in the circular
+  buffer for samples, events, and conditions.
+
+    *Default*: 17 -> 2^17 = 131,072 slots.
+
+* `CheckpointFrequency` - The frequency checkpoints are created in the
+  stream. This is used for current with the at argument. This is an
+  advanced configuration item and should not be changed unless you
+  understand the internal workings of the agent.
+
+    *Default*: 1000
+
+* `CreateUniqueIds`: Changes all the ids in each element to a UUID that will be unique across devices. This is used for merging devices from multiple sources.
+
+    *Default*: `false`
+
+* `Devices` - The XML file to load that specifies the devices and is
+  supplied as the result of a probe request. If the key is not found
+  the defaults are tried.
+
+    *Defaults*: probe.xml or Devices.xml
+
+* `DisableAgentDevice` - When the schema version is >= 1.7, disable the
+  creation of the Agent device.
+
+    *Default*: false
+
+* `JsonVersion`     - JSON Printer format. Old format: 1, new format: 2
+
+    *Default*: 2
+
+* `LogStreams` - Debugging flag to log the streamed data to a file. Logs to a file named: `Stream_` + timestamp + `.log` in the current working directory. This is only for the Rest Sink.
+
+    *Default*: `false`
+
+* `MaxAssets` - The maximum number of assets the agent can hold in its buffer. The
+  number is the actual count, not an exponent.
+
+    *Default*: 1024
+
+* `MaxCachedFileSize` - The maximum size of a raw file to cache in memory.
+
+    *Default*: 20 kb
+
+* `MinCompressFileSize` - The file size where we begin compressing raw files sent to the client.
+
+    *Default*: 100 kb
+
+* `MinimumConfigReloadAge` - The minimum age of a config file before an agent reload is triggered (seconds).
+
+    *Default*: 15 seconds
+
+* `MonitorConfigFiles` - Monitor agent.cfg and Devices.xml files and restart agent if they change.
+
+    *Default*: false
+
+* `MonitorInterval` - The interval between checks if the agent.cfg or Device.xml files have changed.
+
+    *Default*: 10 seconds
+
+* `Pretty` - Pretty print the output with indententation
+
+    *Default*: false
+
+* `PidFile` - UNIX only. The full path of the file that contains the
+  process id of the daemon. This is not supported in Windows.
+
+    *Default*: agent.pid
+
+* `SchemaVersion` - Change the schema version to a different version number.
+
+    *Default*: *Current Supported Version*
+
+* `Sender` - The value for the sender header attribute.
+
+    *Default*: Local machine name
+
+* `ServiceName` - Changes the service name when installing or removing
+  the service. This allows multiple agents to run as services on the same machine.
+
+    *Default*: MTConnect Agent
+
+* `SuppressIPAddress` - Suppress the Adapter IP Address and port when creating the Agent Device ids and names. This applies to all adapters.
+
+    *Default*: `false`
+
+* `VersionDeviceXml` - Create a new versioned file every time the Device.xml file changes from an external source.
+
+    *Default*: `false`
+
+* `CorrectTimestamps` - Verify time is always progressing forward for each data item and correct if not.
+
+    *Default*: `false`
+
+* `Validation` - Turns on validation of model components and observations
+
+    *Default*: `false`
+
+* `WorkerThreads` - The number of operating system threads dedicated to the Agent
+
+    *Default*: 1
+
+#### Adapter General Configuration
+
+These can be overridden on a per-adapter basis
+
+* `Protocol` –Specify protocol. Options: [`shdr`|`mqtt`]
+
+    *Default*: shdr
+
+* `ConversionRequired` - Global default for data item units conversion in the agent.
+  Assumes the adapter has already done unit conversion.
+
+    *Default*: true
+
+* `EnableSourceDeviceModels` - Allow adapters and data sources to supply Device
+  configuration
+
+    *Default*: false
+
+* `Heartbeat` – Overrides the heartbeat interval sent back from the adapter in the
+   `* PONG <hb>`. The heartbeat will always be this value in milliseconds.
+
+    *Default*: _None_
+
+* `IgnoreTimestamps` - Overwrite timestamps with the agent time. This will correct
+  clock drift but will not give as accurate relative time since it will not take into
+  consideration network latencies. This can be overridden on a per adapter basis.
+
+    *Default*: false
+
+* `LegacyTimeout`	- The default length of time an adapter can be silent before it
+  is disconnected. This is only for legacy adapters that do not support heartbeats.
+
+    *Default*: 600
+
+* `PreserveUUID` - Do not overwrite the UUID with the UUID from the adapter, preserve
+  the UUID in the Devices.xml file. This can be overridden on a per adapter basis.
+
+    *Default*: true
+
+* `ReconnectInterval` - The amount of time between adapter reconnection attempts.
+  This is useful for implementation of high performance adapters where availability
+  needs to be tracked in near-real-time. Time is specified in milliseconds (ms).
+
+    *Default*: 10000
+
+* `ShdrVersion` - Specifies the SHDR protocol version used by the adapter. When greater than one (1),
+  allows multiple complex observations, like `Condition` and `Message` on the same line. If it equials one (1),
+  then any observation requiring more than a key/value pair need to be on separate lines. This is the default for all adapters.
+
+    *Default*: 1
+
+* `UpcaseDataItemValue` - Always converts the value of the data items to upper case.
+
+    *Default*: true
+
+#### REST Service Configuration
+
+* `AllowPut`	- Allow HTTP PUT or POST of data item values or assets.
+
+    *Default*: false
+
+* `AllowPutFrom`	- Allow HTTP PUT or POST from a specific host or
+  list of hosts. Lists are comma (,) separated and the host names will
+  be validated by translating them into IP addresses.
+
+    *Default*: none
+
+* `HttpHeaders`     - Additional headers to add to the HTTP Response for CORS Security
+
+    > Example: ```
+    > HttpHeaders {
+    >   Access-Control-Allow-Origin = *
+    >   Access-Control-Allow-Methods = GET
+    >   Access-Control-Allow-Headers = Content-Type
+    > }```
+
+* `Port`	- The port number the agent binds to for requests.
+
+    *Default*: 5000
+
+* `ServerIp` - The server IP Address to bind to. Can be used to select the interface in IPV4 or IPV6.
+
+    *Default*: 0.0.0.0
+
+
+#### Configuration Pameters for TLS (https) Support ####
+
+The following parameters must be present to enable https requests. If there is no password on the certificate, `TlsCertificatePassword` may be omitted.
+
+* `TlsCertificateChain` - The name of the file containing the certificate chain created from signing authority
+
+    *Default*: *NULL*
+
+* `TlsCertificatePassword` -  The password used when creating the certificate. If none was supplied, do not use.
+
+    *Default*: *NULL*
+
+* `TlsClientCAs` - For `TlsVerifyClientCertificate`, specifies a file that contains additional certificate authorities for verification
+
+    *Default*: *NULL*
+
+* `TlsDHKey` -  The name of the file containing the Diffie–Hellman key
+
+    *Default*: *NULL*
+
+* `TlsOnly` -  Only allow secure connections, http requests will be rejected
+
+    *Default*: `false`
+
+* `TlsPrivateKey` -  The name of the file containing the private key for the certificate
+
+    *Default*: *NULL*
+
+* `TlsVerifyClientCertificate` - Request and verify the client certificate against root authorities
+
+    *Default*: false
+
+### MQTT Configuration
+
+* `MqttCaCert` - CA Certificate for MQTT TLS connection to the MTT Broker
+
+    *Default*: *NULL*
+
+* `MqttHost` - IP Address or name of the MQTT Broker
+
+    *Default*: 127.0.0.1
+
+* `MqttPort` - Port number of MQTT Broker
+
+    *Default*: 1883
+
+* `MqttTls` - TLS Certificate for secure connection to the MQTT Broker
+
+    *Default*: `false`
+
+* `MqttWs` - Instructs MQTT to connect using web sockets
+
+    *Default*: `false`
+
+#### MQTT Sink
+
+> **⚠️ Deprecation Notice:** The origional `MqttService` has been deprecated. `MqttService` is now an alias for `Mqtt2Service`. Please use `MqttService` for new configurations. `Mqtt2Service` will continue to work for backward compatibility but may be removed in a future version.
+
+**Deprecated Configuration (still supported):**
+
+Enabled in `agent.cfg` by specifying:
+
+```
+Sinks {
+  MqttService {
+    # Configuration Options below...
+  }
+}
+```
+
+> **Note:** Both `MqttService` and `Mqtt2Service` use the same underlying implementation and support the same configuration options listed below.
+
+#### MQTT Sink Configuration
+
+Enabled in `agent.cfg` by specifying:
+
+```
+Sinks {
+  Mqtt2Service {
+    # Configuration Options...
+  }
+}
+```
+
+* `AssetTopic` - Prefix for the Assets
+
+    *Default*: `MTConnect/Asset/[device]`
+
+* `CurrentTopic` - Prefix for the Current
+
+    *Default*: `MTConnect/Current/[device]`
+
+* `ProbeTopic` or `DeviceTopic` - Prefix for the Device Model topic
+
+    > Note: `[device]` will be replaced with the uuid of each device. Other patterns can be created,
+    > for example: `MTConnect/[device]/Probe` will group by device instead of operation.
+    > `DeviceTopic` will also work.
+
+    *Default*: `MTConnect/Probe/[device]`
+
+* `SampleTopic` - Prefix for the Sample
+
+    *Default*: `MTConnect/Sample/[device]`
+
+* `MqttLastWillTopic` - The topic used for the last will and testement for an agent
+
+    > Note: The value will be `AVAILABLE` when the Agent is publishing and connected and will
+    > publish `UNAVAILABLE` when the agent disconnects from the broker.
+
+    *Default*: `MTConnect/Probe/[device]/Availability"`
+
+* `MqttCurrentInterval` - The frequency to publish currents. Acts like a keyframe in a video stream.
+
+    *Default*: 10000ms
+
+* `MqttSampleInterval` - The frequency to publish samples. Works the same way as the `interval` in the rest call. Groups observations up and publishes with the minimum interval given. If nothing is availble, will wait until an observation arrives to publish.
+
+    *Default*: 500ms
+
+* `MqttSampleCount` - The maxmimum number of observations to publish at one time.
+
+    *Default*: 1000
+
+* `MqttRetain` - For the MQTT Sinks, sets the retain flag for publishing.
+
+    *Default*: True
+
+* `MqttQOS`: - For the MQTT Sinks, sets the Quality of Service. Must be one of `at_least_once`, `at_most_once`, `exactly_once`.
+
+    *Default*: `at_least_once`
+
+* `MqttXPath`: - The xpath filter to apply to all current and samples published to MQTT. If the XPath is invalid, it will fall back to publishing all data items.
+
+    *Default*: All data items
+
+## MQTT Entity Sink Documentation
+
+For detailed configuration, usage, and message format for the MQTT Entity Sink, see: [docs: MTConnect MQTT Entity Sink](src/mtconnect/sink/mqtt_entity_sink/README.md)
+
+### Adapter Configuration Items ###
+
+* `Adapters` - Contains a list of device blocks. If there are no Adapters
+  specified and the Devices file contains one device, the Agent defaults
+  to an adapter located on the localhost at port 7878.  Data passed from
+  the Adapter is associated with the default device.
+
+    *Default*: localhost 7878, associated with the default device
+
+    * `Device` - The name of the device that corresponds to the name of
+      the device in the Devices file. Each adapter can map to one
+      device. Specifying a "*" will map to the default device.
+
+        *Default*: The name of the block for this adapter or if that is
+        not found the default device if only one device is specified
+        in the devices file.
+
+    * `Host` - The host the adapter is located on.
+
+        *Default*: localhost
+
+    * `Port` - The port to connect to the adapter.
+
+        *Default*: 7878
+
+    * `Manufacturer` - Replaces the manufacturer attribute in the device XML.
+
+        *Default*: Current value in device XML.
+
+    * `Station` - Replaces the Station attribute in the device XML.
+
+        *Default*: Current value in device XML.
+
+    * `SerialNumber` - Replaces the SerialNumber attribute in the device XML.
+
+        *Default*: Current value in device XML.
+
+    * `UUID` - Replaces the UUID attribute in the device XML.
+
+        *Default*: Current value in device XML.
+
+    * `AutoAvailable` - For devices that do not have the ability to provide available events, if `yes`, this sets the `Availability` to AVAILABLE upon connection.
+
+        *Default*: no (new in 1.2, if AVAILABILITY is not provided for device it will be automatically added and this will default to yes)
+
+    * `AdditionalDevices` - Comma separated list of additional devices connected to this adapter. This provides availability support when one adapter feeds multiple devices.
+
+        *Default*: nothing
+
+    * `FilterDuplicates` - If value is `yes`, filters all duplicate values for data items. This is to support adapters that are not doing proper duplicate filtering.
+
+        *Default*: no
+
+    * `LegacyTimeout` - length of time an adapter can be silent before it
+        is disconnected. This is only for legacy adapters that do not support
+        heartbeats. If heartbeats are present, this will be ignored.
+
+        *Default*: 600
+
+    * `ReconnectInterval` - The amount of time between adapter reconnection attempts.
+       This is useful for implementation of high performance adapters where availability
+       needs to be tracked in near-real-time. Time is specified in milliseconds (ms).
+       Defaults to the top level ReconnectInterval.
+
+        *Default*: 10000
+
+    * `IgnoreTimestamps` - Overwrite timestamps with the agent time. This will correct
+      clock drift but will not give as accurate relative time since it will not take into
+      consideration network latencies. This can be overridden on a per adapter basis.
+
+        *Default*: Top Level Setting
+
+    * `PreserveUUID` - Do not overwrite the UUID with the UUID from the adapter, preserve
+		  the UUID in the Devices.xml file. This can be overridden on a per adapter basis.
+
+		    *Default*: false
+
+    * `RealTime` - Boost the thread priority of this adapter so that events are handled faster.
+
+        *Default*: false
+
+    * `RelativeTime` - The timestamps will be given as relative offsets represented as a floating
+      point number of milliseconds. The offset will be added to the arrival time of the first
+      recorded event. If the timestamp is given as a time, the difference between the agent time
+      and the fitst incoming timestamp will be used as a constant clock adjustment.
+
+        *Default*: false
+
+    * `ConversionRequired` - Adapter setting for data item units conversion in the agent.
+      Assumes the adapter has already done unit conversion. Defaults to global.
+
+        *Default*: Top Level Setting
+
+    * `UpcaseDataItemValue` - Always converts the value of the data items to upper case.
+
+        *Default*: Top Level Setting
+
+    * `ShdrVersion` - Specifies the SHDR protocol version used by the adapter. When greater than one
+      (1), allows  multiple complex observations, like `Condition` and `Message` on the same line.
+      If it equials one (1), then any observation requiring more than a key/value pair need to be on
+      separate lines. Applies to only this adapter.
+
+	    *Default*: 1
+
+    * `SuppressIPAddress` - Suppress the Adapter IP Address and port when creating the Agent Device ids and names.
+
+        *Default*: false
+
+	* `AdapterIdentity` - Adapter Identity name used to prefix dataitems within the Agent device ids and names.
+
+        *Default*:
+		* If `SuppressIPAddress` == false:\
+		`AdapterIdentity` = ```_ {IP}_{PORT}```\
+		example:`_localhost_7878`
+
+		* If `SuppressIPAddress` == true:\
+		`AdapterIdentity` = ```_ sha1digest({IP}_{PORT})```\
+		example: `__71020ed1ed`
+
+#### MQTT Adapter/Source
+
+* `MqttHost` - IP Address or name of the MQTT Broker
+
+    *Default*: 127.0.0.1
+
+* `MqttPort` - Port number of MQTT Broker
+
+    *Default*: 1883
+
+* `topics` - list of topics to subscribe to. Note : Only raw SHDR strings supported at this time
+
+    *Required*
+
+* `MqttClientId` - Port number of MQTT Broker
+
+    *Default*: Auto-generated
+
+	> **⚠️Note:** Mqtt Sinks and Mqtt Adapters create separate connections to their respective brokers, but currently use the same client ID by default. Because of this, when using a single broker for source and sink, best practice is to explicitly specify their respective `MqttClientId`
+	>
+
+	Example mqtt adapter block:
+	```
+	mydevice {
+			Protocol = mqtt
+			MqttHost = localhost
+			MqttPort = 1883
+			MqttClientId = myUniqueID
+			Topics = /ingest
+		}
+	```
+
+* `AdapterIdentity` - Adapter Identity name used to prefix dataitems within the Agent device ids and names.
+
+	*Default*:
+	* If `SuppressIPAddress` == false:\
+	`AdapterIdentity` = ```_ {IP}_{PORT}```\
+	example:`_localhost_7878`
+
+	* If `SuppressIPAddress` == true:\
+	`AdapterIdentity` = ```_ sha1digest({IP}_{PORT})```\
+	example: `__71020ed1ed`
+
+### Agent Adapter Configuration
+
+* `Url` - The URL of the source agent. `http:` or `https:` are accepted for the protocol.
+* `SourceDevice` – The Device name or UUID for the source of the data
+* `Count` – the number of items request during a single sample
+
+    *Default*: 1000
+
+* `Polling Interval` – The interval used for streaming or polling in milliseconds
+
+    *Default*: 500ms
+
+* `Reconnect Interval` – The interval between reconnection attampts in milliseconds
+
+    *Default*: 10000ms
+
+* `Use Polling` – Force the adapter to use polling instead of streaming. Only set to `true` if x-multipart-replace blocked.
+
+    *Default*: false
+
+* `Heartbeat` – The heartbeat interval from the server
+
+    *Default*: 10000ms
+
+logger_config configuration items
+-----
+
+* `logger_config` - The logging configuration section.
+
+    * `logging_level` - The logging level: `trace`, `debug`, `info`, `warn`,
+        `error`, or `fatal`.
+
+        *Default*: `info`
+
+        Note: when running Agent with `agent debug`, `logging_level` will be set to `debug`.
+
+    * `output` - The output file or stream. If using a file, specify
+      as: `"file <filename>"`. cout and cerr can be used to specify the
+      standard output and standard error streams. *Default*s to the same
+      directory as the executable.
+
+        *Default*: file `adapter.log`
+
+    * `max_size` - The maximum log file size. Suffix can be K for kilobytes, M for megabytes, or
+      G for gigabytes. No suffix will default to bytes (B). Case is ignored.
+
+        *Default*: 10M
+
+    * `max_index` - The maximum number of log files to keep.
+
+        *Default*: 9
+
+    * `schedule` - The scheduled time to start a new file. Can be DAILY, WEEKLY, or NEVER.
+
+        *Default*: NEVER
+
+</details>
 
 ---
 
