@@ -461,6 +461,18 @@ This repository typically follows GitHub Flow:
 
 # 📝 Version History
 
+### Version 2.7
+
+This release adds the following assets:
+- Part Archetype
+- Part
+- Process Archetype
+- Process
+- Task Archetype
+- Task
+
+The asset models allow us to communicate information about parts and processes, and they are manufactured on the shop floor. Tasks are used to coordinate activities involving multiple machines.
+
 ### Version 2.6
 
 * Added changes to support version 2.6 REST error response documents. 
