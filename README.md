@@ -48,7 +48,7 @@ By handling multiple adapters, buffering high-frequency data, supporting secure 
 
 ### 🌐 Flexible Output Options
 
-- HTTP server for `/probe`, `/current`, `/sample`, `/assets`
+- REST HTTP server for `/probe`, `/current`, `/sample`, and `/assets` APIs
 - WebSocket streaming for real-time dashboards
 - TLS support for secure communication
 - MQTT output using flattended or hierarchial topics
@@ -56,13 +56,13 @@ By handling multiple adapters, buffering high-frequency data, supporting secure 
 ### 🧠 Extensibility
 
 - Ruby-based scripting for custom transformation pipelines
-- Modular components allowing custom adapters and output
-- Namespace support for extended functionality
+- Modular components allowing custom inputs and outputs
+- XML Namespace support for extended functionality
 
 ### ⚙️ Industrial-Grade Infrastructure
 
-- High-performance circular buffer for storing samples
-- Cross-platform support (Windows, Linux, macOS)
+- High-performance store-and-forward buffering of data
+- Cross-platform support (Windows, Linux, and MacOS)
 - Low-overhead runtime for embedded or resource-constrained machines
 
 ---
@@ -171,8 +171,10 @@ Example:
 Devices = Devices.xml
 Port = 5000
 AllowPut = true
-Buffersize = 131072
+BufferSize = 17
 ```
+
+**⚠️ Warning**: The `BufferSize` is specified in powers of 2. A value of 17 means $2^{17}$ = 131,072 slots.
 
 # 🔧 Advanced Configuration
 
@@ -180,11 +182,11 @@ Buffersize = 131072
 
 Some capabilities of the agent require additional setup or are only needed in more complex environments. These include:
 
-- connecting multiple devices to a single agent,
-- securing communication through TLS,
-- ingesting MQTT-based data sources,
-- applying custom logic using Ruby,
-- enabling optional services like asset ingestion, data transforms, or extended namespaces.
+- connecting multiple adapters to one or more devices
+- securing communication through TLS
+- ingesting MQTT-based data sources
+- applying custom logic using Ruby
+- enabling optional services like asset ingestion, data transforms, or extended namespaces
 
 The following sections explain when and why you would use these features, along with short examples.
 
@@ -252,9 +254,9 @@ The agent supports MQTT ingestion for devices or sensors that publish data to a 
 
 Use MQTT when:
 
-- working with IoT sensors, gateways, or PLCs,
-- devices already publish metrics to an MQTT broker,
-- you need a lightweight protocol for high-frequency data.
+- you have applications that already using MQTT
+- you want to publish data from a local broker to the cloud
+- you want a lightweight protocol for high-frequency data
 
 The agent requires the broker address, topics, and connection details:
 
@@ -280,7 +282,7 @@ Ruby extensions allow you to customize how data is processed by the agent before
 - modify assets or samples before buffering,
 - implement custom logic not present in the MTConnect standard.
 
-The agent loads Ruby scripts from a directory:
+The agent loads Ruby scripts from the current directory:
 
 ```
 Ruby {
@@ -288,13 +290,13 @@ Ruby {
 }
 ```
 
-You can then write Ruby code that hooks into processing events.
+You can then write Ruby code that provides tranformation of the data in the pipeline.
 
 ## SHDR (Simple Hierarchical Data Representation)
 
 ### What SHDR Is
 
-SHDR is the original MTConnect-defined line-based protocol for transmitting machine state and data items. It streams information as timestamped key-value pairs over a plain TCP connection. It is simple, deterministic, and extremely reliable — which is why it continues to be the standard for CNC machine adapters.
+SHDR is the original MTConnect text-based protocol for transmitting machine state and data items. It streams information as timestamped key-value pairs over a plain TCP connection. It is simple, deterministic, and extremely reliable — which is why it continues to be the standard for CNC machine adapters.
 
 Example SHDR line:
 
@@ -304,16 +306,16 @@ Example SHDR line:
 
 ### Why SHDR Exists
 
-- CNC controls and legacy equipment often cannot speak MQTT/JSON directly.
-- SHDR provides a low-overhead, real-time stream that adapters can implement with minimal dependencies.
-- It was intentionally created by MTConnect to ensure interoperability across machine vendors.
+- CNC controls and legacy equipment often cannot support modern protocols like MQTT or HTTP
+- SHDR provides a low-overhead, real-time stream that adapters can implement with minimal dependencies
+- It was intentionally created by MTConnect to reduce the complexity of machine data collection
 
 ### When to Use SHDR
 
 Choose SHDR if:
 
 - you are connecting to Fanuc, Mazak, Okuma, Haas, etc.
-- you need deterministic, line-based real-time updates
+- you need real-time telemetry with minimal latency and low overhead
 - you are using existing MTConnect adapters shipped with machine vendors
 
 ### Alternatives
@@ -327,9 +329,9 @@ Choose SHDR if:
 
 - MTConnect Adapters: [https://github.com/mtconnect/adapter](https://github.com/mtconnect/adapter)
 
-### Why SHDR Is a One-Off
+### Why SHDR Is Only for MTConnect
 
-Unlike MQTT or JSON, SHDR is not a general IoT messaging protocol. It only exists in MTConnect ecosystems and is purpose-built for CNC-level real-time telemetry. It remains widely deployed but many modern environments now run blended architectures:
+Unlike MQTT, SHDR is not a general IoT messaging protocol. It only exists in MTConnect ecosystems and is purpose-built for CNC-level real-time telemetry. It remains widely deployed but many modern environments now run blended architectures:
 
 ```
 CNC → SHDR → Agent
@@ -347,11 +349,14 @@ Understanding what the agent returns helps developers build clients effectively.
 Shows device structure:
 
 ```xml
-<Device id="dev1" name="CNC1">
-  <Components>
-    <Axes>...</Axes>
-  </Components>
-</Device>
+<MTConnectDevices ...>
+...
+  <Device id="dev1" name="CNC1">
+    <Components>
+      <Axes>...</Axes>
+    </Components>
+  </Device>
+</MTConnectDevices>
 ```
 
 ### /current
@@ -359,7 +364,7 @@ Shows device structure:
 Shows the latest sample for every data item.
 
 ```xml
-<Position dataItemId="X">12.345</Position>
+<Position dataItemId="X" sequence="12345" timestamp="..." ...>12.345</Position>
 ```
 
 ### /sample
@@ -367,7 +372,7 @@ Shows the latest sample for every data item.
 Shows buffered time series data.
 
 ```xml
-<CuttingSpeed timestamp="...">3500</CuttingSpeed>
+<CuttingSpeed dataItemId="X" sequence="12345" timestamp="..." ...>3500</CuttingSpeed>
 ```
 
 These outputs comply with the MTConnect schema and can be validated using standard tools.
@@ -380,9 +385,13 @@ This section provides an overview of all the necessary configurable parameters.
 
 ### Top level configuration items
 
-- `AgentDeviceUUID` - Set the UUID of the agent device
+- `Devices` - Path to the Devices.xml file defining the machine structure.
 
-  _Default_: UUID derived from the IP address and port of the agent
+  _Default_: `Devices.xml`
+
+- `Port` - The TCP port number the agent listens on for HTTP requests.
+
+  _Default_: 5000
 
 - `BufferSize` - The 2^X number of slots available in the circular
   buffer for samples, events, and conditions.
@@ -395,6 +404,29 @@ This section provides an overview of all the necessary configurable parameters.
   understand the internal workings of the agent.
 
   _Default_: 1000
+
+* `IgnoreTimestamps` - Overwrite timestamps with the agent time. This will correct
+  clock drift but will not give as accurate relative time since it will not take into
+  consideration network latencies. This can be overridden on a per adapter basis.
+
+    *Default*: false
+
+- `MaxAssets` - The maximum number of assets that can be stored in memory.
+
+  _Default_: 1024
+
+- `SchemaVersion` - The MTConnect Schema version to use for output.
+
+  _Default_: _Current supported version_
+
+* `Validation` - Turns on validation of model components and observations
+
+    *Default*: `false`
+
+* `WorkerThreads` - The number of operating system threads dedicated to the Agent
+
+    *Default*: 1
+
 
 Make sure to checkout all [Configuration Parameters Wiki Page](https://github.com/mtconnect/cppagent/wiki/Configuration-Parameters)
 
@@ -429,12 +461,30 @@ This repository typically follows GitHub Flow:
 
 # 📝 Version History
 
-### v2.5
+### Version 2.6
 
-- Added new MQTT ingest pipeline
-- Improved Ruby extension lifecycle
-- Updated TLS handling
-- Better error logs
+* Added changes to support version 2.6 REST error response documents. 
+* Support for  `AssetAdded` event that adds to `AssetChanged` and `AssetRemoved`. 
+* Fixed WebSocket error reporting and handling. 
+* Added support for the new Error Response types in REST API.
+* Validation for samples and other data types.
+* Improved handling of ID conflicts in Devices.xml when dyn dynamically adding devices.
+
+### Version 2.5
+
+* Support for validation of the MTConnect Streams document
+  * In the configuration file set: `Validation = true`
+  * At present, it only validates controlled vocabulary (enumerations). In future releases, we will validate all types.
+* Added support for new asset models: Pallet and Fixture
+* Supports WebSockets communication using the REST interface
+  * See Wiki for more information (https://github.com/mtconnect/cppagent/wiki)
+* Deprecated the old MQTT Server, topics now mirror probe, current, and streams.
+  * See wiki for more information (https://github.com/mtconnect/cppagent/wiki)
+* Added support for DataSet represetation of geometric transformations in Coordnate Systems, Solid Models, and Motion.
+
+### Complete Version History
+
+Please see the Releases page: [MTConnect Agent Releases](https://github.com/mtconnect/cppagent/releases)
 
 ---
 
@@ -448,4 +498,4 @@ This repository typically follows GitHub Flow:
 
 # 📄 License
 
-Apache License 2.0
+[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
