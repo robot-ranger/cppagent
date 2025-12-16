@@ -1190,13 +1190,13 @@ TEST_F(TaskAssetTest, task_must_have_a_task_state)
   </Collaborators>
 </Task>
 )DOC";
-  
+
   ErrorList errors;
   entity::XmlParser parser;
 
   auto entity = parser.parse(Asset::getRoot(), doc, errors);
   ASSERT_EQ(1, errors.size());
-  
+
   EXPECT_EQ("Task(TaskState): Property TaskState is required and not provided"s,
             errors.front()->what());
 }
@@ -1220,13 +1220,13 @@ TEST_F(TaskAssetTest, task_must_have_a_task_type)
   </Collaborators>
 </Task>
 )DOC";
-  
+
   ErrorList errors;
   entity::XmlParser parser;
-  
+
   auto entity = parser.parse(Asset::getRoot(), doc, errors);
   ASSERT_EQ(1, errors.size());
-  
+
   EXPECT_EQ("Task(TaskType): Property TaskType is required and not provided"s,
             errors.front()->what());
 }

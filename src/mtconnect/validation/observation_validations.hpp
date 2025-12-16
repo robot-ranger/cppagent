@@ -4,7 +4,6 @@ Validation ControlledVocabularies {
      {{"ACTIVE", {SCHEMA_VERSION(1, 2), 0}}, {"INACTIVE", {SCHEMA_VERSION(1, 2), 0}}}},
     {"Alarm", {}},
     {"AssetChanged", {}},
-    {"AssetAdded", {}},
     {"AssetRemoved", {}},
     {"Availability",
      {{"AVAILABLE", {SCHEMA_VERSION(1, 1), 0}}, {"UNAVAILABLE", {SCHEMA_VERSION(1, 1), 0}}}},
@@ -249,4 +248,7 @@ Validation ControlledVocabularies {
     {"ActivePowerSource", {}},
     {"LocationNarrative", {}},
     {"Thickness", {}},
-    {"LocationSpatialGeographic", {}}};
+    {"LocationSpatialGeographic", {}},
+    {"PartIndex", {}},
+    {"AssociatedAssetId", {}},
+    {"AssetAdded", {}}};
