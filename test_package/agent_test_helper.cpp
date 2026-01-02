@@ -98,3 +98,27 @@ void AgentTestHelper::responseHelper(const char *file, int line, const QueryMap 
   makeRequest(file, line, http::verb::get, "", aQueries, path, accepts);
   doc = nlohmann::json::parse(m_session->m_body);
 }
+
+void AgentTestHelper::makeWebSocketRequest(const char *file, int line, const std::string &json, xmlDocPtr *doc,
+                                           std::string &id)
+{
+  m_dispatched = m_websocketSession->dispatch(json, id);
+  auto response = m_websocketSession->getNextResponse(id);
+  ASSERT_TRUE(response) << "No response for id " << id;
+  if (response)
+  {
+    *doc = xmlParseMemory(response->c_str(), int32_t(response->size()));
+  }
+}
+
+void AgentTestHelper::makeWebSocketRequest(const char *file, int line, const std::string &json, nlohmann::json &doc,
+                                           std::string &id)
+{
+  m_dispatched = m_websocketSession->dispatch(json, id);
+  auto response = m_websocketSession->getNextResponse(id);
+  ASSERT_TRUE(response) << "No response for id " << id;
+  if (response)
+  {
+    doc = nlohmann::json::parse(*response);
+  }
+}

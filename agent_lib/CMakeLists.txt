@@ -288,6 +288,7 @@ set(AGENT_SOURCES
         "${SOURCE_DIR}/sink/rest_sink/session_impl.hpp"
         "${SOURCE_DIR}/sink/rest_sink/tls_dector.hpp"
         "${SOURCE_DIR}/sink/rest_sink/websocket_session.hpp"
+        "${SOURCE_DIR}/sink/rest_sink/websocket_request_manager.hpp"
   
 # src/sink/rest_sink SOURCE_FILES_ONLY
 

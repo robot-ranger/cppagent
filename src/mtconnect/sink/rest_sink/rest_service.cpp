@@ -731,11 +731,11 @@ namespace mtconnect {
     {
       using namespace rest_sink;
 
-
       auto handler = [&](SessionPtr session, RequestPtr request) -> bool {
         request->m_request = "MTConnectStreams";
 
-        if(!request->parameter<int32_t>("count")) request->m_parameters["count"] =100;
+        if (!request->parameter<int32_t>("count"))
+          request->m_parameters["count"] = 100;
 
         auto interval = request->parameter<int32_t>("interval");
         if (interval)

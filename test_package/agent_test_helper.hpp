@@ -36,6 +36,8 @@
 #include "mtconnect/sink/rest_sink/routing.hpp"
 #include "mtconnect/sink/rest_sink/server.hpp"
 #include "mtconnect/sink/rest_sink/session.hpp"
+#include "mtconnect/sink/rest_sink/websocket_request_manager.hpp"
+#include "mtconnect/sink/rest_sink/websocket_session.hpp"
 #include "mtconnect/source/adapter/shdr/shdr_adapter.hpp"
 #include "mtconnect/source/loopback_source.hpp"
 #include "test_utilities.hpp"
@@ -106,7 +108,80 @@ namespace mtconnect {
         std::string m_chunkMimeType;
         bool m_streaming {false};
       };
+      
+      class TestWebsocketSession : public WebsocketSession<TestWebsocketSession>
+      {
+      public:
+        TestWebsocketSession(boost::asio::executor &&exec, RequestPtr &&request, Dispatch dispatch,
+                             ErrorFunction func)
+        : WebsocketSession(std::move(request), dispatch, func), m_executor(std::move(exec))
+        {
+          m_isOpen = true;
+        }
+        ~TestWebsocketSession() {}
+        std::shared_ptr<TestWebsocketSession> shared_ptr()
+        {
+          return std::dynamic_pointer_cast<TestWebsocketSession>(shared_from_this());
+        }
 
+        void run() override {}
+        
+        void read(const std::string &json)
+        {
+          if (!m_requestManager.dispatch(shared_ptr(), json))
+          {
+            LOG(error) << "Dispatch failed for: " << json;
+          }
+        }
+                
+        void closeStream() override {}
+        
+        bool isStreamOpen() { return m_isOpen; }
+        
+        void asyncSend(WebsocketRequestManager::WebsocketRequest *request)
+        {
+          auto buffer = beast::buffers_to_string(request->m_streamBuffer->data());
+
+          m_responses[request->m_requestId].emplace(buffer);
+          
+          beast::error_code ec;
+          boost::asio::post(m_executor, boost::bind(&TestWebsocketSession::sent, shared_ptr(), ec, 0,
+                                                        request->m_requestId));
+        }
+        
+        auto &getExecutor() { return m_executor; }
+        
+        bool dispatch(const std::string &buffer, std::string &id)
+        {
+          return m_requestManager.dispatch(shared_ptr(), buffer, &id);
+        }
+        
+        
+        bool hasResponse(const std::string &id) const
+        {
+          const auto q = m_responses.find(id);
+          return q != m_responses.end() && !q->second.empty();
+        }
+        std::optional<std::string> getNextResponse(const std::string &id)
+        {
+          auto q = m_responses.find(id);
+          if (q != m_responses.end() && !q->second.empty())
+          {
+            auto response = q->second.front();
+            q->second.pop();
+            return response;
+          }
+          else
+          {
+            return std::nullopt;
+          }
+        }
+
+        std::map<std::string, std::queue<std::string>> m_responses;
+
+      protected:
+        boost::asio::executor m_executor;
+      };
     }  // namespace rest_sink
   }    // namespace sink
 }  // namespace mtconnect
@@ -135,32 +210,101 @@ public:
   }
 
   auto session() { return m_session; }
+  auto websocketSession() { return m_websocketSession; }
 
   void setAgentCreateHook(Hook &hook) { m_agentCreateHook = hook; }
 
-  // Helper method to test expected string, given optional query, & run tests
+  /// @brief Helper to get a response from the agent
+  /// @param file The source file the request is made from
+  /// @param line The line number
+  /// @param aQueries The query parameters
+  /// @param doc The returned document
+  /// @param path The request path
+  /// @param accepts The accepted mime type
   void responseHelper(const char *file, int line,
                       const mtconnect::sink::rest_sink::QueryMap &aQueries, xmlDocPtr *doc,
                       const char *path, const char *accepts = "text/xml");
+  
+  /// @brief Helper to get a streaming response from the agent
+  /// @param file The source file the request is made from
+  /// @param line The line number
+  /// @param aQueries The query parameters
+  /// @param path The request path
+  /// @param accepts The accepted mime type
   void responseStreamHelper(const char *file, int line,
                             const mtconnect::sink::rest_sink::QueryMap &aQueries, const char *path,
                             const char *accepts = "text/xml");
+  
+  /// @brief Helper to get a json response from the agent
+  /// @param file The source file the request is made from
+  /// @param line The line number
+  /// @param aQueries The query parameters
+  /// @param doc The returned document
+  /// @param path The request path
+  /// @param accepts The accepted mime type
   void responseHelper(const char *file, int line,
                       const mtconnect::sink::rest_sink::QueryMap &aQueries, nlohmann::json &doc,
                       const char *path, const char *accepts = "application/json");
+  
+  /// @brief Helper to make a PUT request to the agent
+  /// @param file The source file the request is made from
+  /// @param line The line number
+  /// @param body The body of the request
+  /// @param aQueries The query parameters
+  /// @param doc The returned document
+  /// @param path The request path
+  /// @param accepts The accepted mime type
   void putResponseHelper(const char *file, int line, const std::string &body,
                          const mtconnect::sink::rest_sink::QueryMap &aQueries, xmlDocPtr *doc,
                          const char *path, const char *accepts = "text/xml");
+  
+  /// @brief Helper to make a POST request to the agent
+  /// @param file The source file the request is made from
+  /// @param line The line number
+  /// @param aQueries The query parameters
+  /// @param doc The returned document
+  /// @param path The request path
+  /// @param accepts The accepted mime type
   void deleteResponseHelper(const char *file, int line,
                             const mtconnect::sink::rest_sink::QueryMap &aQueries, xmlDocPtr *doc,
                             const char *path, const char *accepts = "text/xml");
 
+  /// @brief Helper to get a chunked response from the agent
+  /// @param file The source file the request is made from
+  /// @param line The line number
+  /// @param doc The returned document
   void chunkStreamHelper(const char *file, int line, xmlDocPtr *doc);
 
+  /// @brief Make a request to the agent
+  /// @param file The source file the request is made from
+  /// @param line The line number
+  /// @param verb The HTTP verb
+  /// @param body The body for PUT/POST requests
+  /// @param aQueries The query parameters
+  /// @param path The request path
+  /// @param accepts The accepted mime type
   void makeRequest(const char *file, int line, boost::beast::http::verb verb,
                    const std::string &body, const mtconnect::sink::rest_sink::QueryMap &aQueries,
                    const char *path, const char *accepts);
 
+  /// @brief Make a request using a json command to parse and dispatch
+  /// @param file The source file the request is made from
+  /// @param line The line number
+  /// @param json the request
+  /// @param doc the returned document
+  /// @param id the request id
+  void makeWebSocketRequest(const char *file, int line, const std::string &json, xmlDocPtr *doc,
+                            std::string &id);
+
+  /// @brief Make a request using a json command to parse and dispatch
+  /// @param file The source file the request is made from
+  /// @param line The line number
+  /// @param json the request
+  /// @param doc the returned document
+  /// @param id the request id
+  void makeWebSocketRequest(const char *file, int line, const std::string &json, nlohmann::json &doc,
+                       std::string &id);
+  
   auto getAgent() { return m_agent.get(); }
   std::shared_ptr<mhttp::RestService> getRestService()
   {
@@ -269,6 +413,14 @@ public:
 
     m_session = std::make_shared<mhttp::TestSession>(
         [](mhttp::SessionPtr, mhttp::RequestPtr) { return true; }, m_server->getErrorFunction());
+    
+    mhttp::RequestPtr request = std::make_shared<mhttp::Request>();
+    request->m_verb = boost::beast::http::verb::get;
+    m_websocketSession = std::make_shared<mhttp::TestWebsocketSession>(m_agent->getContext().get().get_executor(),
+                                                                       std::move(request),
+                                                                       [this](mhttp::SessionPtr s, mhttp::RequestPtr r) {
+                              return m_server->dispatch(s, r); },
+                     m_server->getErrorFunction());
     return m_agent.get();
   }
 
@@ -339,6 +491,7 @@ public:
   boost::asio::ip::tcp::socket m_socket;
   mtconnect::sink::rest_sink::Response m_response;
   std::shared_ptr<mtconnect::sink::rest_sink::TestSession> m_session;
+  std::shared_ptr<mtconnect::sink::rest_sink::TestWebsocketSession> m_websocketSession;
 
   mtconnect::sink::SinkFactory m_sinkFactory;
   mtconnect::source::SourceFactory m_sourceFactory;
@@ -374,7 +527,7 @@ struct XmlDocFreer
   ASSERT_TRUE(doc);                                                           \
   XmlDocFreer cleanup(doc)
 
-#define PARSE_XML_STREAM_QUERY(path, queries) \
+#define PARSE_XML_STREAM_QUERY(path, queries)                                 \
   m_agentTestHelper->responseStreamHelper(__FILE__, __LINE__, queries, path);
 
 #define PARSE_XML_CHUNK()                                         \
@@ -394,6 +547,18 @@ struct XmlDocFreer
   ASSERT_TRUE(doc);                                                            \
   XmlDocFreer cleanup(doc)
 
-#define PARSE_JSON_RESPONSE(path) \
-  nlohmann::json doc;             \
+#define PARSE_JSON_RESPONSE(path)                                      \
+  nlohmann::json doc;                                                  \
   m_agentTestHelper->responseHelper(__FILE__, __LINE__, {}, doc, path)
+
+#define PARSE_XML_WS_RESPONSE(json)                                                      \
+  xmlDocPtr doc = nullptr;                                                               \
+  std::string id;                                                                        \
+  m_agentTestHelper->makeWebSocketRequest(__FILE__, __LINE__, json, &doc, id);       \
+  ASSERT_TRUE(doc);                                                                      \
+  XmlDocFreer cleanup(doc)
+
+#define PARSE_JSON_WS_RESPONSE(json)                                                     \
+  nlohmann::json doc;                                                                    \
+  std::string id;                                                                        \
+  m_agentTestHelper->makeWebSocketRequest(__FILE__, __LINE__, json, doc, id);
