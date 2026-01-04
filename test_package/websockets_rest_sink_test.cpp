@@ -62,7 +62,10 @@ protected:
   void SetUp() override
   {
     m_agentTestHelper = make_unique<AgentTestHelper>();
-    m_agentTestHelper->createAgent("/samples/dyn_load.xml", 8, 64, "2.6", 25, true);
+    m_agentTestHelper->createAgent("/samples/dyn_load.xml", 8, 64, "2.6", 25, true,
+                                   true, {{configuration::JsonVersion, 2},
+      {configuration::DisableAgentDevice, true}
+    });
     m_agentId = to_string(getCurrentTimeInSec());
   }
   
@@ -119,7 +122,13 @@ TEST_F(WebsocketsRestSinkTest, should_handle_simple_probe)
 
 TEST_F(WebsocketsRestSinkTest, should_handle_json_probe)
 {
-  GTEST_SKIP() << "Test not implemented yet";
+  {
+    PARSE_JSON_WS_RESPONSE(R"({ "id": "1234", "request": "probe", "format": "json"})");
+    ASSERT_EQ("1234", id);
+
+    ASSERT_EQ("LinuxCNC",  jdoc.at("/MTConnectDevices/Devices/Device/0/name"_json_pointer).get<string>());
+    ASSERT_EQ("000",  jdoc.at("/MTConnectDevices/Devices/Device/0/uuid"_json_pointer).get<string>());
+  }
 }
 
 TEST_F(WebsocketsRestSinkTest, should_handle_simple_current)
@@ -162,6 +171,11 @@ TEST_F(WebsocketsRestSinkTest, should_handle_multiple_streaming_reqeuests)
   GTEST_SKIP() << "Test not implemented yet";
 }
 
+TEST_F(WebsocketsRestSinkTest, should_handle_multiple_streaming_reqeuests_with_cancel)
+{
+  GTEST_SKIP() << "Test not implemented yet";
+}
+
 TEST_F(WebsocketsRestSinkTest, should_handle_asset_put)
 {
   GTEST_SKIP() << "Test not implemented yet";
@@ -198,6 +212,11 @@ TEST_F(WebsocketsRestSinkTest, should_return_error_for_unknown_device)
 }
 
 TEST_F(WebsocketsRestSinkTest, should_return_error_for_bad_parameter_value)
+{
+  GTEST_SKIP() << "Test not implemented yet";
+}
+
+TEST_F(WebsocketsRestSinkTest, should_coerce_parameter_data_types)
 {
   GTEST_SKIP() << "Test not implemented yet";
 }

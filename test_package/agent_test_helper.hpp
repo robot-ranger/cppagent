@@ -551,14 +551,14 @@ struct XmlDocFreer
   nlohmann::json doc;                                                  \
   m_agentTestHelper->responseHelper(__FILE__, __LINE__, {}, doc, path)
 
-#define PARSE_XML_WS_RESPONSE(json)                                                      \
-  xmlDocPtr doc = nullptr;                                                               \
-  std::string id;                                                                        \
-  m_agentTestHelper->makeWebSocketRequest(__FILE__, __LINE__, json, &doc, id);       \
-  ASSERT_TRUE(doc);                                                                      \
+#define PARSE_XML_WS_RESPONSE(req)                                             \
+  xmlDocPtr doc = nullptr;                                                     \
+  std::string id;                                                              \
+  m_agentTestHelper->makeWebSocketRequest(__FILE__, __LINE__, req, &doc, id);  \
+  ASSERT_TRUE(doc);                                                            \
   XmlDocFreer cleanup(doc)
 
-#define PARSE_JSON_WS_RESPONSE(json)                                                     \
-  nlohmann::json doc;                                                                    \
-  std::string id;                                                                        \
-  m_agentTestHelper->makeWebSocketRequest(__FILE__, __LINE__, json, doc, id);
+#define PARSE_JSON_WS_RESPONSE(req)                                           \
+  nlohmann::json jdoc;                                                        \
+  std::string id;                                                             \
+  m_agentTestHelper->makeWebSocketRequest(__FILE__, __LINE__, req, jdoc, id)
