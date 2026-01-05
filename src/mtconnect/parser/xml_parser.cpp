@@ -114,7 +114,6 @@ namespace mtconnect::parser {
     try
     {
       xmlInitParser();
-      xmlXPathInit();
       xmlSetGenericErrorFunc(nullptr, agentXMLErrorFunc);
 
       THROW_IF_XML2_NULL(m_doc = xmlReadFile(filePath.c_str(), nullptr, XML_PARSE_NOBLANKS));
@@ -302,7 +301,6 @@ namespace mtconnect::parser {
     try
     {
       xmlInitParser();
-      xmlXPathInit();
       xmlSetGenericErrorFunc(nullptr, agentXMLErrorFunc);
 
       THROW_IF_XML2_NULL(m_doc = xmlReadMemory(doc.c_str(), int32_t(doc.length()), "Devices.xml",

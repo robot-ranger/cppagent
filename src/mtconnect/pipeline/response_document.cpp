@@ -497,8 +497,6 @@ namespace mtconnect::pipeline {
                                const std::optional<std::string> &device,
                                const std::optional<std::string> &uuid)
   {
-    // xmlInitParser();
-    // xmlXPathInit();
     unique_ptr<xmlDoc, function<void(xmlDocPtr)>> doc(
         xmlReadMemory(content.data(), static_cast<int>(content.length()), "incoming.xml", nullptr,
                       XML_PARSE_NOBLANKS),

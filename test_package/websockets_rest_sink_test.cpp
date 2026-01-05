@@ -133,22 +133,105 @@ TEST_F(WebsocketsRestSinkTest, should_handle_json_probe)
 
 TEST_F(WebsocketsRestSinkTest, should_handle_simple_current)
 {
-  GTEST_SKIP() << "Test not implemented yet";
+  addAdapter();
+  
+  m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|avail|AVAILABLE");
+  m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|mode|MANUAL");
+  
+  {
+    PARSE_XML_WS_RESPONSE(R"({ "id": "1", "request": "current", "format": "xml"})");
+    ASSERT_EQ("1", id);
+    
+    ASSERT_XML_PATH_EQUAL(doc, "//m:Availability", "AVAILABLE");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:ControllerMode", "MANUAL");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:Execution", "UNAVAILABLE");
+  }
 }
 
 TEST_F(WebsocketsRestSinkTest, should_handle_current_at)
 {
-  GTEST_SKIP() << "Test not implemented yet";
+  addAdapter();
+  
+  m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|avail|AVAILABLE");
+  m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|mode|MANUAL");
+  
+  auto at = m_agentTestHelper->m_agent->getCircularBuffer().getSequence() - 1;
+  
+  m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|mode|AUTOMATIC");
+  m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|exec|READY");
+  
+  {
+    PARSE_XML_WS_RESPONSE(format(R"({{ "id": "1", "request": "current", "format": "xml", "at": {} }})", at));
+    ASSERT_EQ("1", id);
+    
+    ASSERT_XML_PATH_EQUAL(doc, "//m:Availability", "AVAILABLE");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:ControllerMode", "MANUAL");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:Execution", "UNAVAILABLE");
+    
+    waitFor(2s, [this, &id]() -> bool {
+      return !m_agentTestHelper->m_websocketSession->hasResponseQueue(id);
+    });
+  }
+  
+  {
+    PARSE_XML_WS_RESPONSE(R"({ "id": "1", "request": "current", "format": "xml" })");
+    ASSERT_EQ("1", id);
+    
+    ASSERT_XML_PATH_EQUAL(doc, "//m:Availability", "AVAILABLE");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:ControllerMode", "AUTOMATIC");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:Execution", "READY");
+  }
 }
 
 TEST_F(WebsocketsRestSinkTest, should_handle_simple_sample)
 {
-  GTEST_SKIP() << "Test not implemented yet";
+  addAdapter();
+  
+  m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|avail|AVAILABLE");
+  m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|mode|MANUAL");
+  m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|mode|AUTOMATIC");
+  m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|exec|READY");
+  
+  {
+    PARSE_XML_WS_RESPONSE(R"({ "id": "1", "request": "sample", "format": "xml" })");
+    ASSERT_EQ("1", id);
+    
+    ASSERT_XML_PATH_EQUAL(doc, "//m:Availability[1]", "UNAVAILABLE");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:Availability[2]", "AVAILABLE");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:ControllerMode[1]", "UNAVAILABLE");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:ControllerMode[2]", "MANUAL");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:ControllerMode[3]", "AUTOMATIC");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:Execution[1]", "UNAVAILABLE");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:Execution[2]", "READY");
+  }
+
+  
 }
 
 TEST_F(WebsocketsRestSinkTest, should_handle_sample_from)
 {
-  GTEST_SKIP() << "Test not implemented yet";
+  addAdapter();
+  
+  m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|avail|AVAILABLE");
+  m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|mode|MANUAL");
+  
+  auto at = m_agentTestHelper->m_agent->getCircularBuffer().getSequence();
+  
+  m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|mode|AUTOMATIC");
+  m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|exec|READY");
+  m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|exec|ACTIVE");
+  m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|exec|READY");
+  
+  {
+    PARSE_XML_WS_RESPONSE(format(R"({{ "id": "1", "request": "sample", "format": "xml", "from": {} }})", at));
+    ASSERT_EQ("1", id);
+    
+    ASSERT_XML_PATH_EQUAL(doc, "//m:ControllerMode[1]", "AUTOMATIC");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:Execution[1]", "READY");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:Execution[2]", "ACTIVE");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:Execution[3]", "READY");
+  }
+  
 }
 
 TEST_F(WebsocketsRestSinkTest, should_handle_asset_request)

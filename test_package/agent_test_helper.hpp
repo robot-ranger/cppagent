@@ -113,6 +113,8 @@ namespace mtconnect {
       class TestWebsocketSession : public WebsocketSession<TestWebsocketSession>
       {
       public:
+        using super = WebsocketSession<TestWebsocketSession>;
+        
         TestWebsocketSession(boost::asio::executor &&exec, RequestPtr &&request, Dispatch dispatch,
                              ErrorFunction func)
         : WebsocketSession(std::move(request), dispatch, func), m_executor(std::move(exec))
@@ -139,6 +141,13 @@ namespace mtconnect {
         
         bool isStreamOpen() { return m_isOpen; }
         
+        void sent(beast::error_code ec, std::size_t len, const std::string &id)
+        {
+          NAMED_SCOPE("WebsocketSession::sent");
+          super::sent(ec, len, id);
+          m_responses.erase(id);
+        }
+        
         void asyncSend(WebsocketRequestManager::WebsocketRequest *request)
         {
           auto buffer = beast::buffers_to_string(request->m_streamBuffer->data());
@@ -149,7 +158,7 @@ namespace mtconnect {
           boost::asio::post(m_executor, boost::bind(&TestWebsocketSession::sent, shared_ptr(), ec, 0,
                                                         request->m_requestId));
         }
-        
+                
         auto &getExecutor() { return m_executor; }
         
         bool dispatch(const std::string &buffer, std::string &id)
@@ -157,12 +166,18 @@ namespace mtconnect {
           return m_requestManager.dispatch(shared_ptr(), buffer, &id);
         }
         
-        
         bool hasResponse(const std::string &id) const
         {
           const auto q = m_responses.find(id);
           return q != m_responses.end() && !q->second.empty();
         }
+
+        bool hasResponseQueue(const std::string &id) const
+        {
+          return m_responses.find(id) != m_responses.end();
+        }
+
+        
         std::optional<std::string> getNextResponse(const std::string &id)
         {
           auto q = m_responses.find(id);
@@ -417,7 +432,9 @@ public:
     
     mhttp::RequestPtr request = std::make_shared<mhttp::Request>();
     request->m_verb = boost::beast::http::verb::get;
-    m_websocketSession = std::make_shared<mhttp::TestWebsocketSession>(m_agent->getContext().get().get_executor(),
+    
+    auto ex { m_agent->getContext().get().get_executor() };
+    m_websocketSession = std::make_shared<mhttp::TestWebsocketSession>(std::move(ex),
                                                                        std::move(request),
                                                                        [this](mhttp::SessionPtr s, mhttp::RequestPtr r) {
                               return m_server->dispatch(s, r); },
