@@ -36,7 +36,9 @@
 namespace mtconnect::sink::rest_sink {
   namespace beast = boost::beast;
 
-  /// @brief A websocket session that provides a pubsub interface using REST parameters
+  /// @brief A websocket session that abstracts out the reading and writing to the stream for testing.
+  /// This uses the Curiously Recurring Template Pattern (CRTP) to allow the derived class to implement stream methods
+  /// for performance.
   template<class Derived>
   class WebsocketSession : public Session
   {
@@ -261,7 +263,9 @@ namespace mtconnect::sink::rest_sink {
     bool m_isOpen {false};
   };
   
-  /// @brief A websocket session that provides a pubsub interface using REST parameters
+  /// @brief An intermediary class to implement a websocket stream connect, read, and write semantics.
+  /// This uses the Curiously Recurring Template Pattern (CRTP) to allow the derived class to implement plain or
+  /// SSL connections.
   template<class Derived>
   class WebsocketSessionImpl : public WebsocketSession<Derived>
   {
@@ -415,6 +419,7 @@ namespace mtconnect::sink::rest_sink {
     beast::flat_buffer m_buffer;
   };
 
+  /// @brief Plain Websocket Session for HTTP connection
   class PlainWebsocketSession : public WebsocketSessionImpl<PlainWebsocketSession>
   {
   public:
@@ -452,6 +457,7 @@ namespace mtconnect::sink::rest_sink {
     Stream m_stream;
   };
 
+  /// @brief SSL Websocket Session for HTTPS connection
   class TlsWebsocketSession : public WebsocketSessionImpl<TlsWebsocketSession>
   {
   public:

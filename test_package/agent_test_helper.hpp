@@ -21,6 +21,7 @@
 #include <iosfwd>
 #include <map>
 #include <string>
+#include <queue>
 
 #include <nlohmann/json.hpp>
 
