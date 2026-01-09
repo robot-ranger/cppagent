@@ -555,6 +555,11 @@ public:
                 << "------------------------" << std::endl;
     }
   }
+  
+  auto getResponseCount(const std::string &id)
+  {
+    return m_websocketSession->m_responses[id].size();
+  }
 
   mhttp::Server *m_server {nullptr};
   std::shared_ptr<mtconnect::pipeline::PipelineContext> m_context;

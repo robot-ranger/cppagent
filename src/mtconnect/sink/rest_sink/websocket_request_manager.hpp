@@ -253,17 +253,6 @@ namespace mtconnect::sink::rest_sink {
       }
 
       auto &id = *(request->m_requestId);
-      if (outId)
-        *outId = id;
-      auto res = m_requests.emplace(id, id);
-      if (!res.second)
-      {
-        LOG(error) << "Duplicate request id: " << id;
-        auto error = InvalidParameterValue::make("id", *request->m_requestId, "string", "string",
-                                                 "Duplicate id given");
-        throw RestError(error, request->m_accepts, rest_sink::status::bad_request, std::nullopt,
-                        "ERROR");
-      }
 
       if (request->m_parameters.count("request") > 0)
       {
@@ -273,18 +262,38 @@ namespace mtconnect::sink::rest_sink {
       else
       {
         auto error =
-            InvalidParameterValue::make("request", "", "string", "string", "No request given");
+        InvalidParameterValue::make("request", "", "string", "string", "No request given");
         throw RestError(error, request->m_accepts, rest_sink::status::bad_request, std::nullopt,
                         id);
       }
 
-      // Check parameters for command
-      LOG(debug) << "Received request id: " << id;
-
-      res.first->second.m_request = std::move(request);
+      if (outId)
+        *outId = id;
+      if (request->m_command != "cancel")
+      {
+        auto res = m_requests.emplace(id, id);
+        if (!res.second)
+        {
+          LOG(error) << "Duplicate request id: " << id;
+          auto error = InvalidParameterValue::make("id", *request->m_requestId, "string", "string",
+                                                   "Duplicate id given");
+          throw RestError(error, request->m_accepts, rest_sink::status::bad_request, std::nullopt,
+                          "ERROR");
+        }
+        
+        // Check parameters for command
+        LOG(debug) << "Received request id: " << id;
+        
+        res.first->second.m_request = std::move(request);
+        request = res.first->second.m_request;
+      }
+      else
+      {
+        LOG(debug) << "Cancel request id: " << id;
+      }
       try
       {
-        return m_dispatch(session, res.first->second.m_request);
+        return m_dispatch(session, request);
       }
 
       catch (RestError &re)
