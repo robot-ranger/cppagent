@@ -20,8 +20,8 @@
 #include <chrono>
 #include <iosfwd>
 #include <map>
-#include <string>
 #include <queue>
+#include <string>
 
 #include <nlohmann/json.hpp>
 
@@ -109,15 +109,15 @@ namespace mtconnect {
         std::string m_chunkMimeType;
         bool m_streaming {false};
       };
-      
+
       class TestWebsocketSession : public WebsocketSession<TestWebsocketSession>
       {
       public:
         using super = WebsocketSession<TestWebsocketSession>;
-        
+
         TestWebsocketSession(boost::asio::executor &&exec, RequestPtr &&request, Dispatch dispatch,
                              ErrorFunction func)
-        : WebsocketSession(std::move(request), dispatch, func), m_executor(std::move(exec))
+          : WebsocketSession(std::move(request), dispatch, func), m_executor(std::move(exec))
         {
           m_isOpen = true;
         }
@@ -128,7 +128,7 @@ namespace mtconnect {
         }
 
         void run() override {}
-        
+
         void read(const std::string &json)
         {
           if (!m_requestManager.dispatch(shared_ptr(), json))
@@ -136,48 +136,42 @@ namespace mtconnect {
             LOG(error) << "Dispatch failed for: " << json;
           }
         }
-                
+
         void closeStream() override {}
-        
+
         bool isStreamOpen() { return m_isOpen; }
-        
+
         void sent(beast::error_code ec, std::size_t len, const std::string &id)
         {
           NAMED_SCOPE("WebsocketSession::sent");
           super::sent(ec, len, id);
-          m_responses.erase(id);
+          m_responsesSent[id]++;
         }
-        
+
         void asyncSend(WebsocketRequestManager::WebsocketRequest *request)
         {
           auto buffer = beast::buffers_to_string(request->m_streamBuffer->data());
 
           m_responses[request->m_requestId].emplace(buffer);
-          
+
           beast::error_code ec;
-          boost::asio::post(m_executor, boost::bind(&TestWebsocketSession::sent, shared_ptr(), ec, 0,
-                                                        request->m_requestId));
+          boost::asio::post(m_executor, boost::bind(&TestWebsocketSession::sent, shared_ptr(), ec,
+                                                    0, request->m_requestId));
         }
-                
+
         auto &getExecutor() { return m_executor; }
-        
+
         bool dispatch(const std::string &buffer, std::string &id)
         {
           return m_requestManager.dispatch(shared_ptr(), buffer, &id);
         }
-        
+
         bool hasResponse(const std::string &id) const
         {
           const auto q = m_responses.find(id);
           return q != m_responses.end() && !q->second.empty();
         }
 
-        bool hasResponseQueue(const std::string &id) const
-        {
-          return m_responses.find(id) != m_responses.end();
-        }
-
-        
         std::optional<std::string> getNextResponse(const std::string &id)
         {
           auto q = m_responses.find(id);
@@ -185,6 +179,7 @@ namespace mtconnect {
           {
             auto response = q->second.front();
             q->second.pop();
+            m_lastResponses[id] = response;
             return response;
           }
           else
@@ -194,6 +189,8 @@ namespace mtconnect {
         }
 
         std::map<std::string, std::queue<std::string>> m_responses;
+        std::map<std::string, uint32_t> m_responsesSent;
+        std::map<std::string, std::string> m_lastResponses;
 
       protected:
         boost::asio::executor m_executor;
@@ -240,7 +237,7 @@ public:
   void responseHelper(const char *file, int line,
                       const mtconnect::sink::rest_sink::QueryMap &aQueries, xmlDocPtr *doc,
                       const char *path, const char *accepts = "text/xml");
-  
+
   /// @brief Helper to get a streaming response from the agent
   /// @param file The source file the request is made from
   /// @param line The line number
@@ -250,7 +247,7 @@ public:
   void responseStreamHelper(const char *file, int line,
                             const mtconnect::sink::rest_sink::QueryMap &aQueries, const char *path,
                             const char *accepts = "text/xml");
-  
+
   /// @brief Helper to get a json response from the agent
   /// @param file The source file the request is made from
   /// @param line The line number
@@ -261,7 +258,7 @@ public:
   void responseHelper(const char *file, int line,
                       const mtconnect::sink::rest_sink::QueryMap &aQueries, nlohmann::json &doc,
                       const char *path, const char *accepts = "application/json");
-  
+
   /// @brief Helper to make a PUT request to the agent
   /// @param file The source file the request is made from
   /// @param line The line number
@@ -273,7 +270,7 @@ public:
   void putResponseHelper(const char *file, int line, const std::string &body,
                          const mtconnect::sink::rest_sink::QueryMap &aQueries, xmlDocPtr *doc,
                          const char *path, const char *accepts = "text/xml");
-  
+
   /// @brief Helper to make a POST request to the agent
   /// @param file The source file the request is made from
   /// @param line The line number
@@ -318,9 +315,31 @@ public:
   /// @param json the request
   /// @param doc the returned document
   /// @param id the request id
-  void makeWebSocketRequest(const char *file, int line, const std::string &json, nlohmann::json &doc,
-                       std::string &id);
-  
+  void makeWebSocketRequest(const char *file, int line, const std::string &json,
+                            nlohmann::json &doc, std::string &id);
+
+  /// @brief Make a request and don't wait for a response
+  /// @param file The source file the request is made from
+  /// @param line The line number
+  /// @param json the request
+  /// @param id the request id
+  void makeAsyncWebSocketRequest(const char *file, int line, const std::string &json,
+                                 std::string &id);
+
+  /// @brief Parse an async respone
+  /// @param file The source file the request is made from
+  /// @param line The line number
+  /// @param doc the returned document
+  /// @param id the request id
+  void parseResponse(const char *file, int line, nlohmann::json &doc, const std::string &id);
+
+  /// @brief Parse an async respone
+  /// @param file The source file the request is made from
+  /// @param line The line number
+  /// @param doc the returned document
+  /// @param id the request id
+  void parseResponse(const char *file, int line, xmlDocPtr *doc, const std::string &id);
+
   auto getAgent() { return m_agent.get(); }
   std::shared_ptr<mhttp::RestService> getRestService()
   {
@@ -429,16 +448,18 @@ public:
 
     m_session = std::make_shared<mhttp::TestSession>(
         [](mhttp::SessionPtr, mhttp::RequestPtr) { return true; }, m_server->getErrorFunction());
-    
+
     mhttp::RequestPtr request = std::make_shared<mhttp::Request>();
     request->m_verb = boost::beast::http::verb::get;
-    
-    auto ex { m_agent->getContext().get().get_executor() };
-    m_websocketSession = std::make_shared<mhttp::TestWebsocketSession>(std::move(ex),
-                                                                       std::move(request),
-                                                                       [this](mhttp::SessionPtr s, mhttp::RequestPtr r) {
-                              return m_server->dispatch(s, r); },
-                     m_server->getErrorFunction());
+
+    auto ex {m_agent->getContext().get().get_executor()};
+    m_websocketSession = std::make_shared<mhttp::TestWebsocketSession>(
+        std::move(ex), std::move(request),
+        [this](mhttp::SessionPtr s, mhttp::RequestPtr r) { return m_server->dispatch(s, r); },
+        m_server->getErrorFunction());
+
+    m_server->simulateRun();
+
     return m_agent.get();
   }
 
@@ -476,6 +497,41 @@ public:
     return 0;
   }
 
+  template <typename Rep, typename Period>
+  bool waitFor(const chrono::duration<Rep, Period> &time, function<bool()> pred)
+  {
+    std::decay_t<decltype(time)> run = time / 2;
+    if (run > 500ms)
+      run = 500ms;
+
+    boost::asio::steady_timer timer(m_ioContext);
+    timer.expires_after(time);
+    bool timeout = false;
+    timer.async_wait([&timeout](boost::system::error_code ec) {
+      if (!ec)
+      {
+        timeout = true;
+      }
+    });
+
+    while (!timeout && !pred())
+    {
+      m_ioContext.run_for(run);
+    }
+    timer.cancel();
+
+    return pred();
+  }
+
+  template <typename Rep, typename Period>
+  bool waitForResponseSent(const chrono::duration<Rep, Period> &time, const std::string &id)
+  {
+    uint32_t initial = m_websocketSession->m_responsesSent[id];
+    return waitFor(time, [this, initial, id]() -> bool {
+      return m_websocketSession->m_responsesSent[id] > initial;
+    });
+  }
+
   void printResponse()
   {
     std::cout << "Status " << m_session->m_code << " " << std::endl
@@ -488,6 +544,16 @@ public:
     std::cout << "Status " << m_response.m_status << " " << std::endl
               << m_out.str() << std::endl
               << "------------------------" << std::endl;
+  }
+
+  void printLastWSResponse(const std::string &id)
+  {
+    auto it = m_websocketSession->m_lastResponses.find(id);
+    if (it != m_websocketSession->m_lastResponses.end())
+    {
+      std::cout << "WebSocket Response for " << id << ": " << it->second << std::endl
+                << "------------------------" << std::endl;
+    }
   }
 
   mhttp::Server *m_server {nullptr};
@@ -545,7 +611,7 @@ struct XmlDocFreer
   ASSERT_TRUE(doc);                                                           \
   XmlDocFreer cleanup(doc)
 
-#define PARSE_XML_STREAM_QUERY(path, queries)                                 \
+#define PARSE_XML_STREAM_QUERY(path, queries) \
   m_agentTestHelper->responseStreamHelper(__FILE__, __LINE__, queries, path);
 
 #define PARSE_XML_CHUNK()                                         \
@@ -565,18 +631,31 @@ struct XmlDocFreer
   ASSERT_TRUE(doc);                                                            \
   XmlDocFreer cleanup(doc)
 
-#define PARSE_JSON_RESPONSE(path)                                      \
-  nlohmann::json doc;                                                  \
+#define PARSE_JSON_RESPONSE(path) \
+  nlohmann::json doc;             \
   m_agentTestHelper->responseHelper(__FILE__, __LINE__, {}, doc, path)
 
-#define PARSE_XML_WS_RESPONSE(req)                                             \
-  xmlDocPtr doc = nullptr;                                                     \
-  std::string id;                                                              \
-  m_agentTestHelper->makeWebSocketRequest(__FILE__, __LINE__, req, &doc, id);  \
-  ASSERT_TRUE(doc);                                                            \
+#define PARSE_XML_WS_RESPONSE(req)                                            \
+  xmlDocPtr doc = nullptr;                                                    \
+  std::string id;                                                             \
+  m_agentTestHelper->makeWebSocketRequest(__FILE__, __LINE__, req, &doc, id); \
+  ASSERT_TRUE(doc);                                                           \
   XmlDocFreer cleanup(doc)
 
-#define PARSE_JSON_WS_RESPONSE(req)                                           \
-  nlohmann::json jdoc;                                                        \
-  std::string id;                                                             \
+#define PARSE_JSON_WS_RESPONSE(req) \
+  nlohmann::json jdoc;              \
+  std::string id;                   \
   m_agentTestHelper->makeWebSocketRequest(__FILE__, __LINE__, req, jdoc, id)
+
+#define BEGIN_ASYNC_WS_REQUEST(req) \
+  std::string id;                   \
+  m_agentTestHelper->makeAsyncWebSocketRequest(__FILE__, __LINE__, req, id)
+
+#define PARSE_NEXT_XML_RESPONSE(_id)                               \
+  xmlDocPtr doc = nullptr;                                         \
+  m_agentTestHelper->parseResponse(__FILE__, __LINE__, &doc, _id); \
+  XmlDocFreer cleanup(doc)
+
+#define PARSE_NEXT_JSON_RESPONSE(_id) \
+  nlohmann::json jdoc;                \
+  m_agentTestHelper->parseResponse(__FILE__, __LINE__, kdoc, _id)

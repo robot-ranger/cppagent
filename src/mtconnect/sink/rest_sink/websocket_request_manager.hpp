@@ -25,6 +25,7 @@
 #include <optional>
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
+#include <strstream>
 
 #include "session.hpp"
 
@@ -59,20 +60,14 @@ namespace mtconnect::sink::rest_sink {
       m_httpRequest.reset();
       m_requests.clear();
     }
-    
+
     /// @brief Set the current request (used for testing).
     /// @param request the request that is owned by the manager
-    void setHttpRequest(RequestPtr &&request)
-    {
-      m_httpRequest = std::move(request);
-    }
-    
+    void setHttpRequest(RequestPtr &&request) { m_httpRequest = std::move(request); }
+
     /// @brief Get the current HTTP request
     /// @returns a pointer to the HTTP request
-    RequestPtr getHttpRequest() const
-    {
-      return m_httpRequest;
-    }
+    RequestPtr getHttpRequest() const { return m_httpRequest; }
 
     /// @brief Finds the request for a given id
     /// @param id the id to search for
@@ -140,8 +135,8 @@ namespace mtconnect::sink::rest_sink {
         LOG(warning) << err.str();
         LOG(warning) << "  " << buffer;
         auto error = Error::make(Error::ErrorCode::INVALID_REQUEST, err.str());
-        throw RestError(error, m_httpRequest->m_accepts, rest_sink::status::bad_request, std::nullopt,
-                        "ERROR");
+        throw RestError(error, m_httpRequest->m_accepts, rest_sink::status::bad_request,
+                        std::nullopt, "ERROR");
       }
       if (!doc.IsObject())
       {
@@ -149,8 +144,8 @@ namespace mtconnect::sink::rest_sink {
         LOG(warning) << "  " << buffer;
         auto error = Error::make(Error::ErrorCode::INVALID_REQUEST,
                                  "JSON message does not have a top level object");
-        throw RestError(error, m_httpRequest->m_accepts, rest_sink::status::bad_request, std::nullopt,
-                        "ERROR");
+        throw RestError(error, m_httpRequest->m_accepts, rest_sink::status::bad_request,
+                        std::nullopt, "ERROR");
       }
       else
       {
@@ -160,7 +155,7 @@ namespace mtconnect::sink::rest_sink {
 
         request->m_verb = boost::beast::http::verb::get;
         request->m_parameters.clear();
-        
+
 #ifdef GetObject
 #define __GOSave__ GetObject
 #undef GetObject
@@ -188,7 +183,16 @@ namespace mtconnect::sink::rest_sink {
             case rapidjson::kObjectType:
               break;
             case rapidjson::kArrayType:
+            {
+              const auto &array = it.value.GetArray();
+              std::strstream buf;
+              for (const auto &s : array)
+                buf << s.GetString() << ";";
+              string str = buf.str();
+              str.erase(str.length() - 1);  // Remove last ;
+              request->m_parameters.emplace(make_pair(it.name.GetString(), ParameterValue(str)));
               break;
+            }
             case rapidjson::kStringType:
               request->m_parameters.emplace(
                   make_pair(it.name.GetString(), ParameterValue(string(it.value.GetString()))));
@@ -222,8 +226,7 @@ namespace mtconnect::sink::rest_sink {
     /// @param buffer the JSON request string
     /// @param outId optional pointer to a string to receive the request id
     /// @returns `true` if the dispatch was successful.
-    bool dispatch(SessionPtr session, const std::string &buffer,
-                  std::string *outId = nullptr)
+    bool dispatch(SessionPtr session, const std::string &buffer, std::string *outId = nullptr)
     {
       using namespace std;
 
@@ -294,7 +297,7 @@ namespace mtconnect::sink::rest_sink {
     }
 
   protected:
-    RequestPtr m_httpRequest;                                //! A pointer to the original HTTP request
+    RequestPtr m_httpRequest;                            //! A pointer to the original HTTP request
     Dispatch m_dispatch;                                 //! The dispatch function
     std::map<std::string, WebsocketRequest> m_requests;  //! The map of requests this class manages
   };
