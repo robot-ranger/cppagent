@@ -555,7 +555,7 @@ public:
                 << "------------------------" << std::endl;
     }
   }
-  
+
   auto getResponseCount(const std::string &id)
   {
     return m_websocketSession->m_responses[id].size();

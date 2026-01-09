@@ -252,26 +252,26 @@ TEST_F(WebsocketsRestSinkTest, should_handle_asset_with_id_array)
 TEST_F(WebsocketsRestSinkTest, should_handle_asset_with_type)
 {
   addAdapter();
-  
+
   m_agentTestHelper->m_adapter->processData(
-                                            "2021-02-01T12:00:00Z|@ASSET@|P1|FakeAsset|<FakeAsset assetId='P1'>TEST 1</FakeAsset>");
+      "2021-02-01T12:00:00Z|@ASSET@|P1|FakeAsset|<FakeAsset assetId='P1'>TEST 1</FakeAsset>");
   m_agentTestHelper->m_adapter->processData(
-                                            "2021-02-01T12:00:00Z|@ASSET@|P2|OtherAsset|<OtherAsset assetId='P2'>TEST 2</OtherAsset>");
+      "2021-02-01T12:00:00Z|@ASSET@|P2|OtherAsset|<OtherAsset assetId='P2'>TEST 2</OtherAsset>");
   m_agentTestHelper->m_adapter->processData(
-                                            "2021-02-01T12:00:00Z|@ASSET@|P3|FakeAsset|<FakeAsset assetId='P3'>TEST 3</FakeAsset>");
+      "2021-02-01T12:00:00Z|@ASSET@|P3|FakeAsset|<FakeAsset assetId='P3'>TEST 3</FakeAsset>");
   m_agentTestHelper->m_adapter->processData(
-                                            "2021-02-01T12:00:00Z|@ASSET@|P4|FakeAsset|<FakeAsset assetId='P4'>TEST 4</FakeAsset>");
+      "2021-02-01T12:00:00Z|@ASSET@|P4|FakeAsset|<FakeAsset assetId='P4'>TEST 4</FakeAsset>");
   m_agentTestHelper->m_adapter->processData(
-                                            "2021-02-01T12:00:00Z|@ASSET@|P5|OtherAsset|<OtherAsset assetId='P5'>TEST 5</OtherAsset>");
+      "2021-02-01T12:00:00Z|@ASSET@|P5|OtherAsset|<OtherAsset assetId='P5'>TEST 5</OtherAsset>");
   m_agentTestHelper->m_adapter->processData(
-                                            "2021-02-01T12:00:00Z|@ASSET@|P6|FakeAsset|<FakeAsset assetId='P6'>TEST 6</FakeAsset>");
+      "2021-02-01T12:00:00Z|@ASSET@|P6|FakeAsset|<FakeAsset assetId='P6'>TEST 6</FakeAsset>");
   {
     PARSE_XML_WS_RESPONSE(
-                          R"({ "id": "1", "request": "asset", "type": "OtherAsset", "format": "xml"})");
+        R"({ "id": "1", "request": "asset", "type": "OtherAsset", "format": "xml"})");
     ASSERT_EQ("1", id);
-    
+
     ASSERT_XML_PATH_COUNT(doc, "//m:Assets/*", 2);
-    
+
     ASSERT_XML_PATH_EQUAL(doc, "//m:OtherAsset[@assetId='P2']", "TEST 2");
     ASSERT_XML_PATH_EQUAL(doc, "//m:OtherAsset[@assetId='P5']", "TEST 5");
   }
@@ -418,154 +418,153 @@ TEST_F(WebsocketsRestSinkTest, should_handle_multiple_streaming_reqeuests)
 TEST_F(WebsocketsRestSinkTest, should_handle_cancel_streaming_request)
 {
   addAdapter();
-  
+
   m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|avail|AVAILABLE");
   m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|mode|MANUAL");
-  
+
   auto at = m_agentTestHelper->m_agent->getCircularBuffer().getSequence();
-  
+
   m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|mode|AUTOMATIC");
   m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|exec|READY");
   m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|exec|ACTIVE");
   m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|exec|READY");
-  
+
   {
     BEGIN_ASYNC_WS_REQUEST(format(
-                                  R"({{ "id": "1", "request": "sample", "format": "xml", "interval": 10, "from": {} }})",
-                                  at));
+        R"({{ "id": "1", "request": "sample", "format": "xml", "interval": 10, "from": {} }})",
+        at));
     ASSERT_EQ("1", id);
-    
+
     m_agentTestHelper->waitForResponseSent(15ms, id);
-    
+
     PARSE_NEXT_XML_RESPONSE(id);
-    
+
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@requestId", "1");
     ASSERT_XML_PATH_EQUAL(doc, "//m:ControllerMode[1]", "AUTOMATIC");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Execution[1]", "READY");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Execution[2]", "ACTIVE");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Execution[3]", "READY");
   }
-  
+
   {
-    BEGIN_ASYNC_WS_REQUEST( R"({ "id": "1", "request": "cancel"})");
+    BEGIN_ASYNC_WS_REQUEST(R"({ "id": "1", "request": "cancel"})");
     ASSERT_EQ(1, m_agentTestHelper->getResponseCount("1"));
     auto resp = m_agentTestHelper->m_websocketSession->getNextResponse("1");
     ASSERT_TRUE(resp);
     ASSERT_EQ("{ \"success\": \"true\"}", *resp);
   }
-  
+
   m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|exec|ACTIVE");
   m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|exec|READY");
-  
+
   m_agentTestHelper->waitForResponseSent(15ms, "1");
-  
+
   ASSERT_EQ(0, m_agentTestHelper->getResponseCount("1"));
 }
 
 TEST_F(WebsocketsRestSinkTest, should_handle_cancel_one_request_with_multiple_streaming_reqeuests)
 {
   addAdapter();
-  
+
   m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|avail|AVAILABLE");
   m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|mode|MANUAL");
-  
+
   auto at = m_agentTestHelper->m_agent->getCircularBuffer().getSequence();
-  
+
   m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|mode|AUTOMATIC");
   m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|exec|READY");
   m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|exec|ACTIVE");
   m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|exec|READY");
-  
+
   {
     BEGIN_ASYNC_WS_REQUEST(format(
-                                  R"({{ "id": "1", "request": "sample", "format": "xml", "interval": 10, "from": {} }})",
-                                  at));
+        R"({{ "id": "1", "request": "sample", "format": "xml", "interval": 10, "from": {} }})",
+        at));
     ASSERT_EQ("1", id);
   }
-  
+
   {
     BEGIN_ASYNC_WS_REQUEST(
-                           R"({ "id": "2", "request": "current", "format": "xml", "interval": 100})");
+        R"({ "id": "2", "request": "current", "format": "xml", "interval": 100})");
     ASSERT_EQ("2", id);
   }
-  
+
   m_agentTestHelper->waitForResponseSent(15ms, "1");
-  
+
   {
     PARSE_NEXT_XML_RESPONSE("1");
-    
+
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@requestId", "1");
     ASSERT_XML_PATH_EQUAL(doc, "//m:ControllerMode[1]", "AUTOMATIC");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Execution[1]", "READY");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Execution[2]", "ACTIVE");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Execution[3]", "READY");
   }
-  
+
   {
     PARSE_NEXT_XML_RESPONSE("2");
-    
+
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@requestId", "2");
     ASSERT_XML_PATH_EQUAL(doc, "//m:ControllerMode", "AUTOMATIC");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Execution", "READY");
   }
-  
+
   m_agentTestHelper->waitForResponseSent(100ms, "2");
-  
+
   {
     PARSE_NEXT_XML_RESPONSE("2");
-    
+
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@requestId", "2");
     ASSERT_XML_PATH_EQUAL(doc, "//m:ControllerMode", "AUTOMATIC");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Execution", "READY");
   }
-  
+
   m_agentTestHelper->waitForResponseSent(105ms, "2");
-  
+
   {
     PARSE_NEXT_XML_RESPONSE("2");
-    
+
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@requestId", "2");
     ASSERT_XML_PATH_EQUAL(doc, "//m:ControllerMode", "AUTOMATIC");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Execution", "READY");
   }
-  
+
   m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|exec|ACTIVE");
   m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|exec|READY");
   m_agentTestHelper->m_adapter->processData("2026-01-01T12:00:00Z|exec|ACTIVE");
-  
+
   {
-    BEGIN_ASYNC_WS_REQUEST( R"({ "id": "1", "request": "cancel"})");
+    BEGIN_ASYNC_WS_REQUEST(R"({ "id": "1", "request": "cancel"})");
     ASSERT_EQ(1, m_agentTestHelper->getResponseCount("1"));
     auto resp = m_agentTestHelper->m_websocketSession->getNextResponse("1");
     ASSERT_TRUE(resp);
     ASSERT_EQ("{ \"success\": \"true\"}", *resp);
   }
-  
+
   m_agentTestHelper->waitForResponseSent(100ms, "2");
-  
+
   {
     PARSE_NEXT_XML_RESPONSE("2");
-    
+
     ASSERT_XML_PATH_EQUAL(doc, "//m:Header@requestId", "2");
     ASSERT_XML_PATH_EQUAL(doc, "//m:ControllerMode", "AUTOMATIC");
     ASSERT_XML_PATH_EQUAL(doc, "//m:Execution", "ACTIVE");
   }
-  
+
   ASSERT_EQ(0, m_agentTestHelper->getResponseCount("1"));
-  
+
   {
-    BEGIN_ASYNC_WS_REQUEST( R"({ "id": "2", "request": "cancel"})");
+    BEGIN_ASYNC_WS_REQUEST(R"({ "id": "2", "request": "cancel"})");
     ASSERT_EQ(1, m_agentTestHelper->getResponseCount("2"));
     auto resp = m_agentTestHelper->m_websocketSession->getNextResponse("2");
     ASSERT_TRUE(resp);
     ASSERT_EQ("{ \"success\": \"true\"}", *resp);
   }
-  
-  m_agentTestHelper->waitForResponseSent(105ms, "2");
-  ASSERT_EQ(0, m_agentTestHelper->getResponseCount("2"));
-  ASSERT_EQ(0, m_agentTestHelper->getResponseCount("1"));
-}
 
+  m_agentTestHelper->waitForResponseSent(105ms, "2");
+  ASSERT_EQ(0, m_agentTestHelper->getResponseCount("1"));
+  ASSERT_EQ(0, m_agentTestHelper->getResponseCount("2"));
+}
 
 TEST_F(WebsocketsRestSinkTest, should_handle_asset_put)
 {
@@ -574,12 +573,41 @@ TEST_F(WebsocketsRestSinkTest, should_handle_asset_put)
 
 TEST_F(WebsocketsRestSinkTest, should_return_error_if_no_id)
 {
-  GTEST_SKIP() << "Test not implemented yet";
+  try
+  {
+    PARSE_XML_WS_RESPONSE(R"({ "request": "probe"})");
+    FAIL() << "Expected exception not thrown";
+  }
+
+  catch (RestError& e)
+  {
+    ASSERT_EQ(status::bad_request, e.getStatus());
+    ASSERT_TRUE(e.getRequestId());
+    ASSERT_EQ("ERROR", *e.getRequestId());
+  }
 }
 
 TEST_F(WebsocketsRestSinkTest, should_return_error_if_duplicate_id)
 {
-  GTEST_SKIP() << "Test not implemented yet";
+  {
+    BEGIN_ASYNC_WS_REQUEST(
+        R"({ "id": "2", "request": "current", "format": "xml", "interval": 100})");
+    ASSERT_EQ("2", id);
+  }
+
+  try
+  {
+    BEGIN_ASYNC_WS_REQUEST(
+        R"({ "id": "2", "request": "current", "format": "xml", "interval": 100})");
+    FAIL() << "Expected exception not thrown";
+  }
+
+  catch (RestError& e)
+  {
+    ASSERT_EQ(status::bad_request, e.getStatus());
+    ASSERT_TRUE(e.getRequestId());
+    ASSERT_EQ("ERROR", *e.getRequestId());
+  }
 }
 
 TEST_F(WebsocketsRestSinkTest, should_return_error_wrong_parameter_type)
@@ -589,12 +617,27 @@ TEST_F(WebsocketsRestSinkTest, should_return_error_wrong_parameter_type)
 
 TEST_F(WebsocketsRestSinkTest, should_return_error_for_unknown_command)
 {
-  GTEST_SKIP() << "Test not implemented yet";
+  {
+    PARSE_XML_WS_RESPONSE(R"({ "id": "1", "request": "unknown"})");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:InvalidURI@errorCode", "INVALID_URI");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:ErrorMessage", "0.0.0.0: Command failed: unknown");
+  }
 }
 
 TEST_F(WebsocketsRestSinkTest, should_return_error_for_malformed_json)
 {
-  GTEST_SKIP() << "Test not implemented yet";
+  try
+  {
+    PARSE_XML_WS_RESPONSE(R"({ "id": "1", "request": probe"})");
+    FAIL() << "Expected exception not thrown";
+  }
+
+  catch (RestError& e)
+  {
+    ASSERT_EQ(status::bad_request, e.getStatus());
+    ASSERT_TRUE(e.getRequestId());
+    ASSERT_EQ("ERROR", *e.getRequestId());
+  }
 }
 
 TEST_F(WebsocketsRestSinkTest, should_return_error_for_unknown_parameter)

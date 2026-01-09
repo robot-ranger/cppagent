@@ -262,7 +262,7 @@ namespace mtconnect::sink::rest_sink {
       else
       {
         auto error =
-        InvalidParameterValue::make("request", "", "string", "string", "No request given");
+            InvalidParameterValue::make("request", "", "string", "string", "No request given");
         throw RestError(error, request->m_accepts, rest_sink::status::bad_request, std::nullopt,
                         id);
       }
@@ -280,10 +280,10 @@ namespace mtconnect::sink::rest_sink {
           throw RestError(error, request->m_accepts, rest_sink::status::bad_request, std::nullopt,
                           "ERROR");
         }
-        
+
         // Check parameters for command
         LOG(debug) << "Received request id: " << id;
-        
+
         res.first->second.m_request = std::move(request);
         request = res.first->second.m_request;
       }
