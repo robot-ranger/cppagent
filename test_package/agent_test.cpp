@@ -2652,7 +2652,7 @@ TEST_F(AgentTest, should_handle_japanese_characters)
     auto controller = std::find_if(streams.begin(), streams.end(), [](const json &comp) {
       return comp.at("/component"_json_pointer).get<string>() == "Controller";
     });
-    ASSERT_NE(controller, streams.end());
+    ASSERT_NE(streams.end(), controller);
     json fault = controller->at("/Condition/Fault/0"_json_pointer);
     ASSERT_TRUE(fault.is_object());
     ASSERT_EQ("ｽﾄﾛｰｸｴﾝﾄﾞ軸あり", fault.at("/value"_json_pointer).get<string>());
