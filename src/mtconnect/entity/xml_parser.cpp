@@ -338,7 +338,6 @@ namespace mtconnect::entity {
     try
     {
       xmlInitParser();
-      xmlXPathInit();
       xmlSetGenericErrorFunc(nullptr, entityXMLErrorFunc);
 
       unique_ptr<xmlDoc, function<void(xmlDocPtr)>> doc(

@@ -283,6 +283,10 @@ namespace mtconnect::sink::rest_sink {
             errors.emplace_back(error);
           }
         }
+        else if (!std::holds_alternative<std::monostate>(p.m_default))
+        {
+          request->m_parameters.emplace(make_pair(p.m_name, p.m_default));
+        }
       }
 
       if (!errors.empty())

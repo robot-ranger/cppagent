@@ -521,23 +521,8 @@ namespace mtconnect {
     void RestService::createAssetRoutings()
     {
       using namespace rest_sink;
-      auto handler = [&](SessionPtr session, RequestPtr request) -> bool {
-        auto removed = *request->parameter<bool>("removed");
-        auto count = *request->parameter<int32_t>("count");
-        auto pretty = request->parameter<bool>("pretty").value_or(false);
-        auto format = request->parameter<string>("format");
-        auto printer = getPrinter(request->m_accepts, format);
 
-        request->m_request = "MTConnectAssets";
-
-        respond(session,
-                assetRequest(printer, count, removed, request->parameter<string>("type"),
-                             request->parameter<string>("device"), pretty, request->m_requestId),
-                request->m_requestId);
-        return true;
-      };
-
-      auto idHandler = [&](SessionPtr session, RequestPtr request) -> bool {
+      auto idHandler = [this](SessionPtr session, RequestPtr request) -> bool {
         auto asset = request->parameter<string>("assetIds");
         request->m_request = "MTConnectAssets";
 
@@ -564,17 +549,41 @@ namespace mtconnect {
         return true;
       };
 
+      auto handler = [this, idHandler](SessionPtr session, RequestPtr request) -> bool {
+        auto assets = request->parameter<string>("assetIds");
+        if (assets)
+        {
+          return idHandler(session, request);
+        }
+
+        auto removed = *request->parameter<bool>("removed");
+        auto count = *request->parameter<int32_t>("count");
+        auto pretty = request->parameter<bool>("pretty").value_or(false);
+        auto format = request->parameter<string>("format");
+        auto printer = getPrinter(request->m_accepts, format);
+
+        request->m_request = "MTConnectAssets";
+
+        respond(session,
+                assetRequest(printer, count, removed, request->parameter<string>("type"),
+                             request->parameter<string>("device"), pretty, request->m_requestId),
+                request->m_requestId);
+        return true;
+      };
+
       string qp(
           "type={string}&removed={bool:false}&"
           "count={integer:100}&device={string}&pretty={bool:false}&format={string}");
       m_server->addRouting({boost::beast::http::verb::get, "/assets?" + qp, handler})
           .document("MTConnect assets request", "Returns up to `count` assets");
+      m_server->addRouting({boost::beast::http::verb::get, "/{device}/assets?" + qp, handler})
+          .document("MTConnect assets request", "Returns up to `count` assets for deivce `device`")
+          .command("assets");
       m_server->addRouting({boost::beast::http::verb::get, "/asset?" + qp, handler})
           .document("MTConnect asset request", "Returns up to `count` assets");
-      m_server->addRouting({boost::beast::http::verb::get, "/{device}/assets?" + qp, handler})
-          .document("MTConnect assets request", "Returns up to `count` assets for deivce `device`");
       m_server->addRouting({boost::beast::http::verb::get, "/{device}/asset?" + qp, handler})
-          .document("MTConnect asset request", "Returns up to `count` assets for deivce `device`");
+          .document("MTConnect asset request", "Returns up to `count` assets for deivce `device`")
+          .command("asset");
       m_server->addRouting({boost::beast::http::verb::get, "/assets/{assetIds}", idHandler})
           .document(
               "MTConnect assets request",
@@ -727,8 +736,12 @@ namespace mtconnect {
     void RestService::createSampleRoutings()
     {
       using namespace rest_sink;
+
       auto handler = [&](SessionPtr session, RequestPtr request) -> bool {
         request->m_request = "MTConnectStreams";
+
+        if (!request->parameter<int32_t>("count"))
+          request->m_parameters["count"] = 100;
 
         auto interval = request->parameter<int32_t>("interval");
         if (interval)
@@ -959,7 +972,7 @@ namespace mtconnect {
         }
         else
         {
-          LOG(debug) << "Sink close when failing sample respone: " << message;
+          LOG(debug) << "Sink close when failing sample response: " << message;
         }
       }
 

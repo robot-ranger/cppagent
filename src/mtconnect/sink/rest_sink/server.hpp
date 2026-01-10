@@ -90,6 +90,9 @@ namespace mtconnect::sink::rest_sink {
     /// @brief Start the http server
     void start();
 
+    /// @brief Simulate running the server for testing
+    void simulateRun() { m_run = true; }
+
     /// @brief Shutdown the http server
     void stop()
     {

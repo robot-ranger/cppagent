@@ -223,7 +223,7 @@ namespace mtconnect::configuration {
     /// @brief io_context::poll
     auto poll() { return m_context.poll(); }
 
-    /// @brief io_context::poll
+    /// @brief io_context::get_executor
     auto get_executor() BOOST_ASIO_NOEXCEPT { return m_context.get_executor(); }
 
     /// @}

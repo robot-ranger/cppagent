@@ -31,21 +31,14 @@
 #include "mtconnect/configuration/config_options.hpp"
 #include "mtconnect/utilities.hpp"
 #include "session.hpp"
+#include "websocket_request_manager.hpp"
 
 namespace mtconnect::sink::rest_sink {
   namespace beast = boost::beast;
 
-  struct WebsocketRequest
-  {
-    WebsocketRequest(const std::string &id) : m_requestId(id) {}
-    std::string m_requestId;
-    std::optional<boost::asio::streambuf> m_streamBuffer;
-    Complete m_complete;
-    bool m_streaming {false};
-    RequestPtr m_request;
-  };
-
-  /// @brief A websocket session that provides a pubsub interface using REST parameters
+  /// @brief A websocket session that abstracts out the reading and writing to the stream for
+  /// testing. This uses the Curiously Recurring Template Pattern (CRTP) to allow the derived class
+  /// to implement stream methods for performance.
   template <class Derived>
   class WebsocketSession : public Session
   {
@@ -62,45 +55,21 @@ namespace mtconnect::sink::rest_sink {
     };
 
   public:
-    using RequestMessage = boost::beast::http::request<boost::beast::http::string_body>;
-
-    WebsocketSession(RequestPtr &&request, RequestMessage &&msg, Dispatch dispatch,
-                     ErrorFunction func)
-      : Session(dispatch, func), m_request(std::move(request)), m_msg(std::move(msg))
+    WebsocketSession(RequestPtr &&request, Dispatch dispatch, ErrorFunction func)
+      : Session(dispatch, func), m_requestManager(std::move(request), dispatch)
     {}
 
     /// @brief Session cannot be copied.
     WebsocketSession(const WebsocketSession &) = delete;
     ~WebsocketSession() = default;
 
-    /// @brief get this as the `Derived` type
-    /// @return the subclass
     Derived &derived() { return static_cast<Derived &>(*this); }
 
-    void run() override
-    {
-      using namespace boost::beast;
-
-      // Set suggested timeout settings for the websocket
-      derived().stream().set_option(
-          websocket::stream_base::timeout::suggested(beast::role_type::server));
-
-      // Set a decorator to change the Server of the handshake
-      derived().stream().set_option(
-          websocket::stream_base::decorator([](websocket::response_type &res) {
-            res.set(http::field::server, GetAgentVersion() + " MTConnectAgent");
-          }));
-
-      // Accept the websocket handshake
-      derived().stream().async_accept(
-          m_msg, boost::asio::bind_executor(derived().getExecutor(),
-                                            beast::bind_front_handler(&WebsocketSession::onAccept,
-                                                                      derived().shared_ptr())));
-    }
+    auto &getRequestManager() { return m_requestManager; }
 
     void close() override
     {
-      NAMED_SCOPE("PlainWebsocketSession::close");
+      NAMED_SCOPE("WebsocketSession::close");
       if (!m_isOpen)
         return;
 
@@ -113,8 +82,7 @@ namespace mtconnect::sink::rest_sink {
         ptr = wptr.lock();
       }
 
-      m_request.reset();
-      m_requests.clear();
+      m_requestManager.reset();
       for (auto obs : m_observers)
       {
         auto optr = obs.lock();
@@ -150,11 +118,10 @@ namespace mtconnect::sink::rest_sink {
       if (requestId)
       {
         auto id = *(requestId);
-        auto it = m_requests.find(id);
-        if (it != m_requests.end())
+        auto req = m_requestManager.findRequest(id);
+        if (req != nullptr)
         {
-          auto &req = it->second;
-          req.m_streaming = true;
+          req->m_streaming = true;
 
           if (complete)
           {
@@ -177,7 +144,7 @@ namespace mtconnect::sink::rest_sink {
     {
       NAMED_SCOPE("WebsocketSession::writeChunk");
 
-      if (!derived().stream().is_open())
+      if (!derived().isStreamOpen())
       {
         return;
       }
@@ -205,49 +172,25 @@ namespace mtconnect::sink::rest_sink {
     }
 
   protected:
-    void onAccept(boost::beast::error_code ec)
-    {
-      if (ec)
-      {
-        fail(status::internal_server_error, "Error occurred in accpet", ec);
-        return;
-      }
-
-      m_isOpen = true;
-
-      derived().stream().async_read(
-          m_buffer, beast::bind_front_handler(&WebsocketSession::onRead, derived().shared_ptr()));
-    }
-
     void send(const std::string body, Complete complete, const std::string &requestId)
     {
       NAMED_SCOPE("WebsocketSession::send");
 
       using namespace std::placeholders;
 
-      auto it = m_requests.find(requestId);
-      if (it != m_requests.end())
+      auto req = m_requestManager.findRequest(requestId);
+      if (req != nullptr)
       {
-        auto &req = it->second;
-        req.m_complete = std::move(complete);
-        req.m_streamBuffer.emplace();
-        std::ostream str(&req.m_streamBuffer.value());
+        req->m_complete = std::move(complete);
+        req->m_streamBuffer.emplace();
+        std::ostream str(&req->m_streamBuffer.value());
 
         str << body;
-
-        auto ref = derived().shared_ptr();
 
         LOG(debug) << "writing chunk for ws: " << requestId;
 
         m_busy = true;
-
-        derived().stream().text(derived().stream().got_text());
-        derived().stream().async_write(req.m_streamBuffer->data(),
-                                       beast::bind_handler(
-                                           [ref, requestId](beast::error_code ec, std::size_t len) {
-                                             ref->sent(ec, len, requestId);
-                                           },
-                                           _1, _2));
+        derived().asyncSend(req);
       }
       else
       {
@@ -270,19 +213,18 @@ namespace mtconnect::sink::rest_sink {
 
         LOG(trace) << "sent chunk for ws: " << id;
 
-        auto it = m_requests.find(id);
-        if (it != m_requests.end())
+        auto req = m_requestManager.findRequest(id);
+        if (req != nullptr)
         {
-          auto &req = it->second;
-          if (req.m_complete)
+          if (req->m_complete)
           {
-            boost::asio::post(derived().stream().get_executor(), req.m_complete);
-            req.m_complete = nullptr;
+            boost::asio::post(derived().getExecutor(), req->m_complete);
+            req->m_complete = nullptr;
           }
 
-          if (!req.m_streaming)
+          if (!req->m_streaming)
           {
-            m_requests.erase(id);
+            m_requestManager.remove(id);
           }
 
           if (m_messageQueue.size() == 0)
@@ -310,163 +252,96 @@ namespace mtconnect::sink::rest_sink {
       }
     }
 
-    RequestPtr parseRequest(const std::string &buffer)
+  protected:
+    WebsocketRequestManager m_requestManager;
+    std::mutex m_mutex;
+    std::atomic_bool m_busy {false};
+    std::deque<Message> m_messageQueue;
+    bool m_isOpen {false};
+  };
+
+  /// @brief An intermediary class to implement a websocket stream connect, read, and write
+  /// semantics. This uses the Curiously Recurring Template Pattern (CRTP) to allow the derived
+  /// class to implement plain or SSL connections.
+  template <class Derived>
+  class WebsocketSessionImpl : public WebsocketSession<Derived>
+  {
+  public:
+    using RequestMessage = boost::beast::http::request<boost::beast::http::string_body>;
+    using super = WebsocketSession<Derived>;
+
+    WebsocketSessionImpl(RequestPtr &&request, RequestMessage &&msg, Dispatch dispatch,
+                         ErrorFunction func)
+      : super(std::move(request), dispatch, func), m_msg(std::move(msg))
+    {}
+
+    /// @brief Session cannot be copied.
+    WebsocketSessionImpl(const WebsocketSessionImpl &) = delete;
+    ~WebsocketSessionImpl() = default;
+
+    /// @brief get this as the `Derived` type
+    /// @return the subclass
+    Derived &derived() { return static_cast<Derived &>(*this); }
+
+    bool isStreamOpen() { return derived().stream().is_open(); }
+
+    auto getExecutor() { return derived().stream().get_executor(); }
+
+    void run() override
     {
-      using namespace rapidjson;
-      using namespace std;
+      using namespace boost::beast;
 
-      Document doc;
-      doc.Parse(buffer.c_str());
+      // Set suggested timeout settings for the websocket
+      derived().stream().set_option(
+          websocket::stream_base::timeout::suggested(beast::role_type::server));
 
-      RequestPtr request;
+      // Set a decorator to change the Server of the handshake
+      derived().stream().set_option(
+          websocket::stream_base::decorator([](websocket::response_type &res) {
+            res.set(http::field::server, GetAgentVersion() + " MTConnectAgent");
+          }));
 
-      if (doc.HasParseError())
-      {
-        stringstream err;
-        err << "Websocket Read Error(offset (" << doc.GetErrorOffset()
-            << ")): " << GetParseError_En(doc.GetParseError());
-        LOG(warning) << err.str();
-        LOG(warning) << "  " << buffer;
-        auto error = Error::make(Error::ErrorCode::INVALID_REQUEST, err.str());
-        throw RestError(error, m_request->m_accepts, rest_sink::status::bad_request, std::nullopt,
-                        "ERROR");
-      }
-      if (!doc.IsObject())
-      {
-        LOG(warning) << "Websocket Read Error: JSON message does not have a top level object";
-        LOG(warning) << "  " << buffer;
-        auto error = Error::make(Error::ErrorCode::INVALID_REQUEST,
-                                 "JSON message does not have a top level object");
-        throw RestError(error, m_request->m_accepts, rest_sink::status::bad_request, std::nullopt,
-                        "ERROR");
-      }
-      else
-      {
-        // Extract the parameters from the json doc to map them to the REST
-        // protocol parameters
-        request = make_unique<Request>(*m_request);
-
-        request->m_verb = beast::http::verb::get;
-        request->m_parameters.clear();
-#ifdef GetObject
-#define __GOSave__ GetObject
-#undef GetObject
-#endif
-
-        const auto &object = doc.GetObject();
-#ifdef __GOSave__
-#define GetObject __GOSave__
-#endif
-
-        for (auto &it : object)
-        {
-          switch (it.value.GetType())
-          {
-            case rapidjson::kNullType:
-              // Skip nulls
-              break;
-            case rapidjson::kFalseType:
-              request->m_parameters.emplace(
-                  make_pair(string(it.name.GetString()), ParameterValue(false)));
-              break;
-            case rapidjson::kTrueType:
-              request->m_parameters.emplace(
-                  make_pair(string(it.name.GetString()), ParameterValue(true)));
-              break;
-            case rapidjson::kObjectType:
-              break;
-            case rapidjson::kArrayType:
-              break;
-            case rapidjson::kStringType:
-              request->m_parameters.emplace(
-                  make_pair(it.name.GetString(), ParameterValue(string(it.value.GetString()))));
-
-              break;
-            case rapidjson::kNumberType:
-              if (it.value.IsInt())
-                request->m_parameters.emplace(
-                    make_pair(it.name.GetString(), ParameterValue(it.value.GetInt())));
-              else if (it.value.IsUint())
-                request->m_parameters.emplace(
-                    make_pair(it.name.GetString(), ParameterValue(uint64_t(it.value.GetUint()))));
-              else if (it.value.IsInt64())
-                request->m_parameters.emplace(
-                    make_pair(it.name.GetString(), ParameterValue(uint64_t(it.value.GetInt64()))));
-              else if (it.value.IsUint64())
-                request->m_parameters.emplace(
-                    make_pair(it.name.GetString(), ParameterValue(it.value.GetUint64())));
-              else if (it.value.IsDouble())
-                request->m_parameters.emplace(
-                    make_pair(it.name.GetString(), ParameterValue(double(it.value.GetDouble()))));
-
-              break;
-          }
-        }
-      }
-
-      return request;
+      // Accept the websocket handshake
+      derived().stream().async_accept(
+          m_msg,
+          boost::asio::bind_executor(
+              derived().getExecutor(),
+              beast::bind_front_handler(&WebsocketSessionImpl::onAccept, derived().shared_ptr())));
     }
 
-    bool dispatchRequest(RequestPtr &&request)
+  protected:
+    friend class WebsocketSession<Derived>;
+
+    void onAccept(boost::beast::error_code ec)
     {
-      using namespace std;
-
-      if (request->m_parameters.count("id") > 0)
+      if (ec)
       {
-        auto &v = request->m_parameters["id"];
-        string id = visit(overloaded {[](monostate m) { return ""s; },
-                                      [](auto v) { return boost::lexical_cast<string>(v); }},
-                          v);
-        request->m_requestId = id;
-        request->m_parameters.erase("id");
-      }
-      else
-      {
-        auto error = InvalidParameterValue::make("id", "", "string", "string", "No id given");
-        throw RestError(error, request->m_accepts, rest_sink::status::bad_request, std::nullopt,
-                        "ERROR");
+        super::fail(status::internal_server_error, "Error occurred in accpet", ec);
+        return;
       }
 
-      auto &id = *(request->m_requestId);
-      auto res = m_requests.emplace(id, id);
-      if (!res.second)
-      {
-        LOG(error) << "Duplicate request id: " << id;
-        auto error = InvalidParameterValue::make("id", *request->m_requestId, "string", "string",
-                                                 "Duplicate id given");
-        throw RestError(error, request->m_accepts, rest_sink::status::bad_request, std::nullopt,
-                        "ERROR");
-      }
+      super::m_isOpen = true;
 
-      if (request->m_parameters.count("request") > 0)
-      {
-        request->m_command = get<string>(request->m_parameters["request"]);
-        request->m_parameters.erase("request");
-      }
-      else
-      {
-        auto error =
-            InvalidParameterValue::make("request", "", "string", "string", "No request given");
-        throw RestError(error, request->m_accepts, rest_sink::status::bad_request, std::nullopt,
-                        id);
-      }
+      derived().stream().async_read(
+          m_buffer,
+          beast::bind_front_handler(&WebsocketSessionImpl::onRead, derived().shared_ptr()));
+    }
 
-      // Check parameters for command
-      LOG(debug) << "Received request id: " << id;
+    void asyncSend(WebsocketRequestManager::WebsocketRequest *request)
+    {
+      NAMED_SCOPE("WebsocketSessionImpl::asyncSend");
 
-      res.first->second.m_request = std::move(request);
-      try
-      {
-        return m_dispatch(derived().shared_ptr(), res.first->second.m_request);
-      }
+      using namespace std::placeholders;
 
-      catch (RestError &re)
-      {
-        re.setRequestId(id);
-        throw re;
-      }
+      auto ref = derived().shared_ptr();
 
-      return false;
+      auto &requestId = request->m_requestId;
+      derived().stream().text(derived().stream().got_text());
+      derived().stream().async_write(
+          request->m_streamBuffer->data(),
+          beast::bind_handler([ref, requestId](beast::error_code ec,
+                                               std::size_t len) { ref->sent(ec, len, requestId); },
+                              _1, _2));
     }
 
     void onRead(beast::error_code ec, std::size_t len)
@@ -474,7 +349,7 @@ namespace mtconnect::sink::rest_sink {
       NAMED_SCOPE("PlainWebsocketSession::onRead");
 
       if (ec)
-        return fail(boost::beast::http::status::internal_server_error, "shutdown", ec);
+        return super::fail(boost::beast::http::status::internal_server_error, "shutdown", ec);
 
       if (len == 0)
       {
@@ -492,11 +367,10 @@ namespace mtconnect::sink::rest_sink {
 
       try
       {
-        auto request = parseRequest(buffer);
-        if (!request || !dispatchRequest(std::move(request)))
+        if (!super::m_requestManager.dispatch(derived().shared_ptr(), buffer))
         {
           std::stringstream txt;
-          txt << getRemote().address() << ": Dispatch failed for: " << buffer;
+          txt << super::getRemote().address() << ": Dispatch failed for: " << buffer;
           LOG(error) << txt.str();
         }
       }
@@ -510,55 +384,45 @@ namespace mtconnect::sink::rest_sink {
           re.setRequestId(*id);
         }
 
-        auto res = m_requests.find(*id);
-        if (res == m_requests.end())
-          m_requests.emplace(*id, *id);
-
-        m_errorFunction(derived().shared_ptr(), re);
+        super::m_requestManager.findOrCreateRequest(*id);
+        super::m_errorFunction(derived().shared_ptr(), re);
       }
 
       catch (std::logic_error &le)
       {
         std::stringstream txt;
-        txt << getRemote().address() << ": Logic Error: " << le.what();
+        txt << super::getRemote().address() << ": Logic Error: " << le.what();
         LOG(error) << txt.str();
-        fail(boost::beast::http::status::not_found, txt.str());
+        super::fail(boost::beast::http::status::not_found, txt.str());
       }
 
       catch (...)
       {
         std::stringstream txt;
-        txt << getRemote().address() << ": Unknown Error thrown";
+        txt << super::getRemote().address() << ": Unknown Error thrown";
         LOG(error) << txt.str();
-        fail(boost::beast::http::status::not_found, txt.str());
+        super::fail(boost::beast::http::status::not_found, txt.str());
       }
 
       derived().stream().async_read(
-          m_buffer, beast::bind_front_handler(&WebsocketSession::onRead, derived().shared_ptr()));
+          m_buffer,
+          beast::bind_front_handler(&WebsocketSessionImpl::onRead, derived().shared_ptr()));
     }
 
   protected:
-    RequestPtr m_request;
     RequestMessage m_msg;
     beast::flat_buffer m_buffer;
-    std::map<std::string, WebsocketRequest> m_requests;
-    std::mutex m_mutex;
-    std::atomic_bool m_busy {false};
-    std::deque<Message> m_messageQueue;
-    bool m_isOpen {false};
   };
 
-  template <class Derived>
-  using WebsocketSessionPtr = std::shared_ptr<WebsocketSession<Derived>>;
-
-  class PlainWebsocketSession : public WebsocketSession<PlainWebsocketSession>
+  /// @brief Plain Websocket Session for HTTP connection
+  class PlainWebsocketSession : public WebsocketSessionImpl<PlainWebsocketSession>
   {
   public:
     using Stream = beast::websocket::stream<beast::tcp_stream>;
 
     PlainWebsocketSession(beast::tcp_stream &&stream, RequestPtr &&request, RequestMessage &&msg,
                           Dispatch dispatch, ErrorFunction func)
-      : WebsocketSession(std::move(request), std::move(msg), dispatch, func),
+      : WebsocketSessionImpl(std::move(request), std::move(msg), dispatch, func),
         m_stream(std::move(stream))
     {
       beast::get_lowest_layer(m_stream).expires_never();
@@ -575,8 +439,6 @@ namespace mtconnect::sink::rest_sink {
         m_stream.close(beast::websocket::close_code::none);
     }
 
-    auto getExecutor() { return m_stream.get_executor(); }
-
     auto &stream() { return m_stream; }
 
     /// @brief Get a pointer cast as an Websocket Session
@@ -590,14 +452,15 @@ namespace mtconnect::sink::rest_sink {
     Stream m_stream;
   };
 
-  class TlsWebsocketSession : public WebsocketSession<TlsWebsocketSession>
+  /// @brief SSL Websocket Session for HTTPS connection
+  class TlsWebsocketSession : public WebsocketSessionImpl<TlsWebsocketSession>
   {
   public:
     using Stream = beast::websocket::stream<beast::ssl_stream<beast::tcp_stream>>;
 
     TlsWebsocketSession(beast::ssl_stream<beast::tcp_stream> &&stream, RequestPtr &&request,
                         RequestMessage &&msg, Dispatch dispatch, ErrorFunction func)
-      : WebsocketSession(std::move(request), std::move(msg), dispatch, func),
+      : WebsocketSessionImpl(std::move(request), std::move(msg), dispatch, func),
         m_stream(std::move(stream))
     {
       beast::get_lowest_layer(m_stream).expires_never();
@@ -609,8 +472,6 @@ namespace mtconnect::sink::rest_sink {
     }
 
     auto &stream() { return m_stream; }
-
-    auto getExecutor() { return m_stream.get_executor(); }
 
     void closeStream() override
     {
