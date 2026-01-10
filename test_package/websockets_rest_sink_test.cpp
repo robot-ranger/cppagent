@@ -640,22 +640,23 @@ TEST_F(WebsocketsRestSinkTest, should_return_error_for_malformed_json)
   }
 }
 
-TEST_F(WebsocketsRestSinkTest, should_return_error_for_unknown_parameter)
-{
-  GTEST_SKIP() << "Test not implemented yet";
-}
-
 TEST_F(WebsocketsRestSinkTest, should_return_error_for_unknown_device)
 {
-  GTEST_SKIP() << "Test not implemented yet";
+  {
+    PARSE_XML_WS_RESPONSE(R"({ "id": "1", "request": "probe", "device": "XyzAbc"})");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:InvalidURI@errorCode", "INVALID_URI");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:ErrorMessage", "0.0.0.0:");
+  }
 }
 
 TEST_F(WebsocketsRestSinkTest, should_return_error_for_bad_parameter_value)
 {
-  GTEST_SKIP() << "Test not implemented yet";
-}
-
-TEST_F(WebsocketsRestSinkTest, should_coerce_parameter_data_types)
-{
-  GTEST_SKIP() << "Test not implemented yet";
+  {
+    PARSE_XML_WS_RESPONSE(
+        R"({ "id": "1", "request": "current", "format": "xml", "at": "notanumber" })");
+    ASSERT_XML_PATH_EQUAL(doc, "//m:InvalidParameterValue@errorCode", "INVALID_PARAMETER_VALUE");
+    ASSERT_XML_PATH_EQUAL(
+        doc, "//m:ErrorMessage",
+        "query parameter 'at': invalid type, expected uint64");
+  }
 }
