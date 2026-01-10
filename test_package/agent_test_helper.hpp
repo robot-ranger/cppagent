@@ -640,6 +640,10 @@ struct XmlDocFreer
   nlohmann::json doc;             \
   m_agentTestHelper->responseHelper(__FILE__, __LINE__, {}, doc, path)
 
+#define PARSE_JSON_RESPONSE_QUERY(path, query) \
+  nlohmann::json doc;                          \
+  m_agentTestHelper->responseHelper(__FILE__, __LINE__, query, doc, path)
+
 #define PARSE_XML_WS_RESPONSE(req)                                            \
   xmlDocPtr doc = nullptr;                                                    \
   std::string id;                                                             \
