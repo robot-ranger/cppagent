@@ -2634,7 +2634,7 @@ TEST_F(AgentTest, should_handle_japanese_characters)
   m_agentTestHelper->m_adapter->processData(
       "2026-01-07T22:32:50.8567651Z|lp|FAULT|1111|||ｽﾄﾛｰｸｴﾝﾄﾞ軸あり");
 
-  // Validate we can handle japanses characters.
+  // Validate we can handle Japanese characters.
   {
     PARSE_XML_RESPONSE("/current");
     ASSERT_XML_PATH_EQUAL(doc,
