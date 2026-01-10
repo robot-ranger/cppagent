@@ -68,7 +68,8 @@ protected:
   void SetUp() override
   {
     m_agentTestHelper = make_unique<AgentTestHelper>();
-    m_agentTestHelper->createAgent("/samples/test_config.xml", 8, 4, "1.3", 25, true);
+    m_agentTestHelper->createAgent("/samples/test_config.xml", 8, 4, "1.3", 25, true, true,
+                                   {{configuration::JsonVersion, 2}});
     m_agentId = to_string(getCurrentTimeInSec());
   }
 
@@ -2620,5 +2621,40 @@ TEST_F(AgentTest, should_initialize_observaton_to_initial_value_when_available)
   {
     PARSE_XML_RESPONSE("/current");
     ASSERT_XML_PATH_EQUAL(doc, "//m:DeviceStream//m:PartCount", "0");
+  }
+}
+
+TEST_F(AgentTest, should_handle_japanese_characters)
+{
+  addAdapter({{configuration::FilterDuplicates, true}});
+  auto agent = m_agentTestHelper->getAgent();
+  auto logic = agent->getDataItemForDevice("LinuxCNC", "lp");
+  ASSERT_TRUE(logic);
+
+  m_agentTestHelper->m_adapter->processData(
+      "2026-01-07T22:32:50.8567651Z|lp|FAULT|1111|||ｽﾄﾛｰｸｴﾝﾄﾞ軸あり");
+
+  // Validate we can handle japanses characters.
+  {
+    PARSE_XML_RESPONSE("/current");
+    ASSERT_XML_PATH_EQUAL(doc,
+                          "//m:DeviceStream//"
+                          "m:ComponentStream[@component='Controller']/m:Condition/"
+                          "m:Fault[@dataItemId='lp']",
+                          "ｽﾄﾛｰｸｴﾝﾄﾞ軸あり");
+  }
+
+  // And in JSON
+  {
+    PARSE_JSON_RESPONSE("/current");
+    json streams = doc.at("/MTConnectStreams/Streams/DeviceStream/0/ComponentStream"_json_pointer);
+    ASSERT_TRUE(streams.is_array());
+    auto controller = std::find_if(streams.begin(), streams.end(), [](const json &comp) {
+      return comp.at("/component"_json_pointer).get<string>() == "Controller";
+    });
+    ASSERT_NE(controller, streams.end());
+    json fault = controller->at("/Condition/Fault/0"_json_pointer);
+    ASSERT_TRUE(fault.is_object());
+    ASSERT_EQ("ｽﾄﾛｰｸｴﾝﾄﾞ軸あり", fault.at("/value"_json_pointer).get<string>());
   }
 }
