@@ -610,11 +610,6 @@ TEST_F(WebsocketsRestSinkTest, should_return_error_if_duplicate_id)
   }
 }
 
-TEST_F(WebsocketsRestSinkTest, should_return_error_wrong_parameter_type)
-{
-  GTEST_SKIP() << "Test not implemented yet";
-}
-
 TEST_F(WebsocketsRestSinkTest, should_return_error_for_unknown_command)
 {
   {
