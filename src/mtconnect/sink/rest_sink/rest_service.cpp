@@ -443,7 +443,8 @@ namespace mtconnect {
       using namespace rest_sink;
       using json = nlohmann::json;
       
-      auto handler = [this](SessionPtr session, const RequestPtr request) -> bool {
+      // GET /config - return current configuration
+      auto getHandler = [this](SessionPtr session, const RequestPtr request) -> bool {
         // Build JSON response with agent configuration
         json config;
         
@@ -503,10 +504,182 @@ namespace mtconnect {
       };
       
       m_server
-          ->addRouting({boost::beast::http::verb::get, "/config", handler})
+          ->addRouting({boost::beast::http::verb::get, "/config", getHandler})
           .document("Agent configuration request",
                     "Returns the current agent configuration as JSON")
           .command("config");
+      
+      // PUT /config - update configuration (only if AllowPut is enabled)
+      if (m_server->arePutsAllowed())
+      {
+        auto putHandler = [this](SessionPtr session, RequestPtr request) -> bool {
+          try
+          {
+            // Parse JSON body
+            json updates = json::parse(request->m_body);
+            
+            // Store initial AllowPut state to enforce security constraint
+            bool initialAllowPut = m_server->arePutsAllowed();
+            
+            // Track which config values were updated
+            std::vector<std::string> updatedKeys;
+            std::vector<std::string> deniedKeys;
+            
+            // Process each update
+            for (auto& [key, value] : updates.items())
+            {
+              // Security check: prevent modification of AllowPut or AllowPutFrom
+              // if PUTs weren't initially allowed
+              if ((key == config::AllowPut || key == config::AllowPutFrom))
+              {
+                if (!initialAllowPut)
+                {
+                  deniedKeys.push_back(key);
+                  continue;
+                }
+                // Even if allowed, don't allow disabling AllowPut
+                if (key == config::AllowPut && value.is_boolean() && !value.get<bool>())
+                {
+                  deniedKeys.push_back(key);
+                  continue;
+                }
+              }
+              
+              // Check if this key exists in current options
+              auto it = m_options.find(key);
+              if (it == m_options.end())
+              {
+                // Skip unknown keys
+                continue;
+              }
+              
+              // Update the config option based on its type
+              std::visit([&value, &key, this, &updatedKeys](auto&& arg) {
+                using T = std::decay_t<decltype(arg)>;
+                try
+                {
+                  if constexpr (std::is_same_v<T, bool>)
+                  {
+                    if (value.is_boolean())
+                    {
+                      m_options[key] = value.get<bool>();
+                      updatedKeys.push_back(key);
+                    }
+                  }
+                  else if constexpr (std::is_same_v<T, int>)
+                  {
+                    if (value.is_number_integer())
+                    {
+                      m_options[key] = value.get<int>();
+                      updatedKeys.push_back(key);
+                    }
+                  }
+                  else if constexpr (std::is_same_v<T, double>)
+                  {
+                    if (value.is_number())
+                    {
+                      m_options[key] = value.get<double>();
+                      updatedKeys.push_back(key);
+                    }
+                  }
+                  else if constexpr (std::is_same_v<T, std::string>)
+                  {
+                    if (value.is_string())
+                    {
+                      m_options[key] = value.get<std::string>();
+                      updatedKeys.push_back(key);
+                    }
+                  }
+                  else if constexpr (std::is_same_v<T, Seconds>)
+                  {
+                    if (value.is_number())
+                    {
+                      m_options[key] = Seconds(value.get<int64_t>());
+                      updatedKeys.push_back(key);
+                    }
+                  }
+                  else if constexpr (std::is_same_v<T, Milliseconds>)
+                  {
+                    if (value.is_number())
+                    {
+                      m_options[key] = Milliseconds(value.get<int64_t>());
+                      updatedKeys.push_back(key);
+                    }
+                  }
+                  else if constexpr (std::is_same_v<T, StringList>)
+                  {
+                    if (value.is_array())
+                    {
+                      StringList list;
+                      for (const auto& item : value)
+                      {
+                        if (item.is_string())
+                          list.push_back(item.get<std::string>());
+                      }
+                      m_options[key] = list;
+                      updatedKeys.push_back(key);
+                    }
+                  }
+                }
+                catch (const std::exception& e)
+                {
+                  LOG(warning) << "Failed to update config key " << key << ": " << e.what();
+                }
+              }, it->second);
+              
+              // Apply specific updates for certain config keys
+              if (key == config::HttpHeaders)
+              {
+                auto headers = GetOption<StringList>(m_options, config::HttpHeaders);
+                if (headers)
+                  m_server->setHttpHeaders(*headers);
+              }
+              else if (key == config::AllowPutFrom)
+              {
+                // Reload AllowPutFrom settings
+                loadAllowPut();
+              }
+            }
+            
+            // Build response with update summary
+            json response;
+            response["status"] = "ok";
+            response["updated"] = updatedKeys;
+            if (!deniedKeys.empty())
+            {
+              response["denied"] = deniedKeys;
+              response["message"] = "Some keys were denied: " + 
+                                    (initialAllowPut ? "Cannot disable AllowPut" 
+                                                    : "Cannot modify security settings");
+            }
+            
+            ResponsePtr resp = make_unique<Response>(
+                rest_sink::status::ok, response.dump(), "application/json");
+            respond(session, std::move(resp), request->m_requestId);
+            return true;
+          }
+          catch (const json::parse_error& e)
+          {
+            auto error = Error::make(Error::ErrorCode::INVALID_REQUEST, 
+                                     "Invalid JSON in request body: "s + e.what());
+            throw RestError(error, getPrinter(request->m_accepts, std::nullopt), 
+                          rest_sink::status::bad_request);
+          }
+          catch (const std::exception& e)
+          {
+            auto error = Error::make(Error::ErrorCode::INVALID_REQUEST, 
+                                     "Failed to update configuration: "s + e.what());
+            throw RestError(error, getPrinter(request->m_accepts, std::nullopt), 
+                          rest_sink::status::internal_server_error);
+          }
+        };
+        
+        m_server
+            ->addRouting({boost::beast::http::verb::put, "/config", putHandler})
+            .document("Update agent configuration",
+                      "Updates runtime configuration. Requires AllowPut to be enabled. "
+                      "Cannot modify AllowPut or AllowPutFrom if initially disabled.");
+      }
     }
 
     void RestService::createFileRoutings()
