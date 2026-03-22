@@ -512,7 +512,7 @@ namespace mtconnect {
           .command("config");
       
       // PUT /config - update configuration (only if AllowPut is enabled)
-      // Writes updated config to JSON file, triggering warm start via file monitoring
+      // Writes updated config to config.json, triggering warm start via file monitoring
       if (m_server->arePutsAllowed())
       {
         auto putHandler = [this](SessionPtr session, RequestPtr request) -> bool {
@@ -564,14 +564,20 @@ namespace mtconnect {
               return true;
             }
             
-            // Get config file path
+            // Get current config file path to determine directory
             auto configFilePath = GetOption<string>(m_options, config::ConfigFile);
-            if (!configFilePath || configFilePath->empty())
+            std::filesystem::path configDir;
+            
+            if (configFilePath && !configFilePath->empty())
             {
-              auto error = Error::make(Error::ErrorCode::INVALID_REQUEST,
-                                       "Config file path not available");
-              throw RestError(error, getPrinter(request->m_accepts, std::nullopt),
-                            rest_sink::status::internal_server_error);
+              // Use the directory of the current config file
+              std::filesystem::path currentConfig(*configFilePath);
+              configDir = currentConfig.parent_path();
+            }
+            else
+            {
+              // Fallback to current working directory
+              configDir = std::filesystem::current_path();
             }
             
             // Build merged configuration (current + updates)
@@ -632,21 +638,15 @@ namespace mtconnect {
               updatedKeys.push_back(key);
             }
             
-            // Write updated config to file as JSON
-            // This will trigger the file monitoring mechanism to detect change and warm start
-            std::filesystem::path configPath(*configFilePath);
+            // Write to config.json in the config directory
+            // The agent searches for config.json at startup and file monitor will detect changes
+            std::filesystem::path jsonConfigPath = configDir / "config.json";
             
-            // If original config was not JSON, write to a .json version
-            if (!configPath.string().ends_with(".json"))
-            {
-              configPath.replace_extension(".json");
-            }
-            
-            std::ofstream configFile(configPath);
+            std::ofstream configFile(jsonConfigPath);
             if (!configFile.is_open())
             {
               auto error = Error::make(Error::ErrorCode::INVALID_REQUEST,
-                                       "Failed to open config file for writing: " + configPath.string());
+                                       "Failed to open config.json for writing: " + jsonConfigPath.string());
               throw RestError(error, getPrinter(request->m_accepts, std::nullopt),
                             rest_sink::status::internal_server_error);
             }
@@ -655,7 +655,7 @@ namespace mtconnect {
             configFile << mergedConfig.dump(2);  // Pretty print with 2-space indent
             configFile.close();
             
-            LOG(info) << "Updated configuration written to " << configPath.string();
+            LOG(info) << "Updated configuration written to " << jsonConfigPath.string();
             LOG(info) << "File monitoring will detect change and trigger warm start";
             
             // Build response
@@ -663,7 +663,7 @@ namespace mtconnect {
             response["status"] = "ok";
             response["message"] = "Configuration updated. Agent will warm start shortly.";
             response["updated"] = updatedKeys;
-            response["configFile"] = configPath.string();
+            response["configFile"] = jsonConfigPath.string();
             
             ResponsePtr resp = make_unique<Response>(
                 rest_sink::status::ok, response.dump(), "application/json");
@@ -693,7 +693,7 @@ namespace mtconnect {
         m_server
             ->addRouting({boost::beast::http::verb::put, "/config", putHandler})
             .document("Update agent configuration",
-                      "Updates configuration by writing to JSON config file, triggering warm start. "
+                      "Updates configuration by writing to config.json, triggering warm start. "
                       "Requires AllowPut to be enabled. "
                       "Cannot modify AllowPut or AllowPutFrom if initially disabled.");
       }
