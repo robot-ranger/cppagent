@@ -48,6 +48,7 @@ namespace mtconnect {
     DECLARE_CONFIGURATION(AllowPutFrom);
     DECLARE_CONFIGURATION(BufferSize);
     DECLARE_CONFIGURATION(CheckpointFrequency);
+    DECLARE_CONFIGURATION(ConfigFile);
     DECLARE_CONFIGURATION(Devices);
     DECLARE_CONFIGURATION(HttpHeaders);
     DECLARE_CONFIGURATION(JsonVersion);
