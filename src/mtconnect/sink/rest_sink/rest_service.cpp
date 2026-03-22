@@ -93,6 +93,10 @@ namespace mtconnect {
       loadStyle(config, "ErrorStyle", xmlPrinter, &XmlPrinter::setErrorStyle);
 
       loadTypes(config);
+      
+      // Track initial AllowPut state before loadAllowPut() potentially modifies it
+      m_initialAllowPut = IsOptionSet(options, config::AllowPut);
+      
       loadAllowPut();
 
       m_server->addParameterDocumentation(
@@ -521,8 +525,9 @@ namespace mtconnect {
             // Parse JSON body
             json updates = json::parse(request->m_body);
             
-            // Check if AllowPut was initially enabled
-            bool initialAllowPut = m_server->arePutsAllowed();
+            // Use the initial AllowPut state from config file (not current runtime state)
+            // This enforces "if the first config does not allow any, then it wont ever by design"
+            bool initialAllowPut = m_initialAllowPut;
             
             // Validate security constraints before updating
             std::vector<std::string> deniedKeys;

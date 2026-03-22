@@ -2671,8 +2671,13 @@ TEST_F(AgentTest, should_reject_security_setting_modifications_when_puts_not_ini
   options[configuration::AllowPut] = true;
   options[configuration::AllowPutFrom] = "127.0.0.1"s;
   
-  // Create agent with AllowPut enabled but simulate it wasn't initially enabled
+  // Create agent with AllowPut enabled
   m_agentTestHelper->createAgent("/samples/test_config.xml", 8, 4, "2.6", 4, false, true, options);
+  
+  // Simulate that AllowPut was NOT initially enabled in config file
+  auto restService = dynamic_cast<RestService*>(m_agentTestHelper->getAgent()->findSink("RestService"));
+  ASSERT_TRUE(restService);
+  restService->setInitialAllowPut(false);
   
   // Try to modify AllowPut or AllowPutFrom
   nlohmann::json updates;
