@@ -634,10 +634,6 @@ namespace mtconnect {
             std::vector<std::string> updatedKeys;
             for (auto& [key, value] : updates.items())
             {
-              // Skip denied keys
-              if (std::find(deniedKeys.begin(), deniedKeys.end(), key) != deniedKeys.end())
-                continue;
-              
               // Update the merged config
               mergedConfig[key] = value;
               updatedKeys.push_back(key);
