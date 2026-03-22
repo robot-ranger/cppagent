@@ -2650,3 +2650,94 @@ TEST_F(AgentTest, should_return_agent_configuration)
   ASSERT_TRUE(json.contains("BufferSize"));
   ASSERT_TRUE(json.contains("SchemaVersion"));
 }
+
+TEST_F(AgentTest, should_reject_put_config_when_puts_not_allowed)
+{
+  // Create agent without AllowPut enabled
+  m_agentTestHelper->createAgent("/samples/test_config.xml", 8, 4, "2.6", 4, false);
+  
+  // Test PUT /config endpoint when PUTs not allowed
+  auto session = m_agentTestHelper->m_server->createSession(m_agentTestHelper->m_context);
+  auto request = make_unique<Request>("/config", boost::beast::http::verb::put);
+  
+  // PUT routing should not exist when AllowPut is disabled
+  auto routing = m_agentTestHelper->m_server->getRouting(request->m_path, request->m_verb);
+  ASSERT_FALSE(routing);
+}
+
+TEST_F(AgentTest, should_reject_security_setting_modifications_when_puts_not_initially_allowed)
+{
+  ConfigOptions options;
+  options[configuration::AllowPut] = true;
+  options[configuration::AllowPutFrom] = "127.0.0.1"s;
+  
+  // Create agent with AllowPut enabled but simulate it wasn't initially enabled
+  m_agentTestHelper->createAgent("/samples/test_config.xml", 8, 4, "2.6", 4, false, true, options);
+  
+  // Try to modify AllowPut or AllowPutFrom
+  nlohmann::json updates;
+  updates["AllowPut"] = false;
+  updates["Port"] = 5002;
+  
+  auto session = m_agentTestHelper->m_server->createSession(m_agentTestHelper->m_context);
+  auto request = make_unique<Request>("/config", boost::beast::http::verb::put);
+  request->m_body = updates.dump();
+  
+  auto routing = m_agentTestHelper->m_server->getRouting(request->m_path, request->m_verb);
+  ASSERT_TRUE(routing);
+  
+  routing->m_handler(session, std::move(request));
+  
+  // Verify response indicates denied keys
+  ASSERT_EQ(session->m_mimeType, "application/json");
+  ASSERT_EQ(session->m_code, boost::beast::http::status::forbidden);
+  
+  auto json = nlohmann::json::parse(session->m_body);
+  ASSERT_EQ(json["status"], "error");
+  ASSERT_TRUE(json.contains("denied"));
+}
+
+TEST_F(AgentTest, should_update_config_and_write_json_file)
+{
+  ConfigOptions options;
+  options[configuration::AllowPut] = true;
+  options[configuration::AllowPutFrom] = "127.0.0.1"s;
+  
+  // Create agent with AllowPut enabled
+  m_agentTestHelper->createAgent("/samples/test_config.xml", 8, 4, "2.6", 4, false, true, options);
+  
+  // Update some config values
+  nlohmann::json updates;
+  updates["Port"] = 5555;
+  updates["BufferSize"] = 20;
+  
+  auto session = m_agentTestHelper->m_server->createSession(m_agentTestHelper->m_context);
+  auto request = make_unique<Request>("/config", boost::beast::http::verb::put);
+  request->m_body = updates.dump();
+  
+  auto routing = m_agentTestHelper->m_server->getRouting(request->m_path, request->m_verb);
+  ASSERT_TRUE(routing);
+  
+  routing->m_handler(session, std::move(request));
+  
+  // Verify response is successful
+  ASSERT_EQ(session->m_mimeType, "application/json");
+  ASSERT_EQ(session->m_code, boost::beast::http::status::ok);
+  
+  auto json = nlohmann::json::parse(session->m_body);
+  ASSERT_EQ(json["status"], "ok");
+  ASSERT_TRUE(json.contains("updated"));
+  ASSERT_TRUE(json.contains("configFile"));
+  
+  // Verify config.json was written
+  std::string configFilePath = json["configFile"];
+  ASSERT_FALSE(configFilePath.empty());
+  
+  // Read and verify the config file exists
+  std::ifstream configFile(configFilePath);
+  ASSERT_TRUE(configFile.is_open());
+  
+  nlohmann::json savedConfig = nlohmann::json::parse(configFile);
+  ASSERT_EQ(savedConfig["Port"], 5555);
+  ASSERT_EQ(savedConfig["BufferSize"], 20);
+}
