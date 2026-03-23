@@ -284,6 +284,7 @@ namespace mtconnect {
       ///@{
       auto instanceId() const { return m_instanceId; }
       void setInstanceId(uint64_t id) { m_instanceId = id; }
+      void setInitialAllowPut(bool allow) { m_initialAllowPut = allow; }
       ///@}
 
     protected:
@@ -346,6 +347,8 @@ namespace mtconnect {
 
       void createAssetRoutings();
 
+      void createConfigRoutings();
+
       // Current Data Collection
       std::string fetchCurrentData(const printer::Printer *printer, const FilterSetOpt &filterSet,
                                    const std::optional<SequenceNumber_t> &at, bool pretty = false,
@@ -382,6 +385,9 @@ namespace mtconnect {
       // Buffers
       FileCache m_fileCache;
       bool m_logStreamData {false};
+      
+      // Track initial AllowPut state from config file (for security enforcement)
+      bool m_initialAllowPut {false};
     };
   }  // namespace sink::rest_sink
 }  // namespace mtconnect

@@ -17,7 +17,11 @@
 
 #include "rest_service.hpp"
 
+#include <filesystem>
+#include <fstream>
 #include <regex>
+
+#include <nlohmann/json.hpp>
 
 #include "error.hpp"
 #include "mtconnect/configuration/config_options.hpp"
@@ -89,6 +93,10 @@ namespace mtconnect {
       loadStyle(config, "ErrorStyle", xmlPrinter, &XmlPrinter::setErrorStyle);
 
       loadTypes(config);
+      
+      // Track initial AllowPut state before loadAllowPut() potentially modifies it
+      m_initialAllowPut = IsOptionSet(options, config::AllowPut);
+      
       loadAllowPut();
 
       m_server->addParameterDocumentation(
@@ -118,6 +126,7 @@ namespace mtconnect {
       createAssetRoutings();
       createProbeRoutings();
       createPutObservationRoutings();
+      createConfigRoutings();
       createFileRoutings();
       m_server->addCommands();
 
@@ -433,6 +442,262 @@ namespace mtconnect {
     {
       response->m_requestId = id;
       session->writeResponse(std::move(response));
+    }
+
+    void RestService::createConfigRoutings()
+    {
+      using namespace rest_sink;
+      using json = nlohmann::json;
+      
+      // GET /config - return current configuration
+      auto getHandler = [this](SessionPtr session, const RequestPtr request) -> bool {
+        // Build JSON response with agent configuration
+        json config;
+        
+        for (const auto& [key, value] : m_options)
+        {
+          // Handle different variant types
+          std::visit([&config, &key](auto&& arg) {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, std::monostate>)
+            {
+              config[key] = nullptr;
+            }
+            else if constexpr (std::is_same_v<T, bool>)
+            {
+              config[key] = arg;
+            }
+            else if constexpr (std::is_same_v<T, int>)
+            {
+              config[key] = arg;
+            }
+            else if constexpr (std::is_same_v<T, double>)
+            {
+              config[key] = arg;
+            }
+            else if constexpr (std::is_same_v<T, std::string>)
+            {
+              config[key] = arg;
+            }
+            else if constexpr (std::is_same_v<T, Seconds>)
+            {
+              config[key] = arg.count();
+            }
+            else if constexpr (std::is_same_v<T, Milliseconds>)
+            {
+              config[key] = arg.count();
+            }
+            else if constexpr (std::is_same_v<T, StringList>)
+            {
+              config[key] = arg;
+            }
+            else
+            {
+              // If compilation fails here, a new type has been added to ConfigOption
+              // and needs to be handled above
+              []<bool flag = false>()
+              {
+                static_assert(flag, "Unhandled type in ConfigOption variant");
+              }();
+            }
+          }, value);
+        }
+        
+        ResponsePtr response = make_unique<Response>(
+            rest_sink::status::ok, config.dump(), "application/json");
+        respond(session, std::move(response), request->m_requestId);
+        return true;
+      };
+      
+      m_server
+          ->addRouting({boost::beast::http::verb::get, "/config", getHandler})
+          .document("Agent configuration request",
+                    "Returns the current agent configuration as JSON")
+          .command("config");
+      
+      // PUT /config - update configuration (only if AllowPut is enabled)
+      // Writes updated config to config.json, triggering warm start via file monitoring
+      if (m_server->arePutsAllowed())
+      {
+        auto putHandler = [this](SessionPtr session, RequestPtr request) -> bool {
+          try
+          {
+            // Parse JSON body
+            json updates = json::parse(request->m_body);
+            
+            // Use the initial AllowPut state from config file (not current runtime state)
+            // This enforces "if the first config does not allow any, then it wont ever by design"
+            bool initialAllowPut = m_initialAllowPut;
+            
+            // Validate security constraints before updating
+            std::vector<std::string> deniedKeys;
+            
+            for (auto& [key, value] : updates.items())
+            {
+              // Security check: prevent modification of AllowPut or AllowPutFrom
+              // if PUTs weren't initially allowed (enforced by design)
+              if (key == config::AllowPut || key == config::AllowPutFrom)
+              {
+                if (!initialAllowPut)
+                {
+                  deniedKeys.push_back(key);
+                  LOG(warning) << "Denied config update for " << key 
+                               << ": AllowPut was not initially enabled";
+                }
+                // Don't allow disabling AllowPut even if initially enabled
+                else if (key == config::AllowPut && value.is_boolean() && !value.get<bool>())
+                {
+                  deniedKeys.push_back(key);
+                  LOG(warning) << "Denied config update: cannot disable AllowPut";
+                }
+              }
+            }
+            
+            // If any security constraints were violated, reject the entire request
+            if (!deniedKeys.empty())
+            {
+              json response;
+              response["status"] = "error";
+              response["denied"] = deniedKeys;
+              response["message"] = initialAllowPut 
+                ? "Cannot disable AllowPut once enabled"
+                : "Cannot modify AllowPut/AllowPutFrom when initially disabled";
+              
+              ResponsePtr resp = make_unique<Response>(
+                  rest_sink::status::forbidden, response.dump(), "application/json");
+              respond(session, std::move(resp), request->m_requestId);
+              return true;
+            }
+            
+            // Get config directory from ConfigPath (first path is the config file's directory)
+            std::filesystem::path configDir;
+            auto configPaths = GetOption<StringList>(m_options, config::ConfigPath);
+            
+            if (configPaths && !configPaths->empty())
+            {
+              // Use the first path which is the config file's parent directory
+              configDir = configPaths->front();
+            }
+            else
+            {
+              // Fallback to current working directory
+              configDir = std::filesystem::current_path();
+            }
+            
+            // Build merged configuration (current + updates)
+            json mergedConfig;
+            for (const auto& [key, value] : m_options)
+            {
+              // Skip internal/runtime keys that shouldn't be persisted
+              // (ConfigPath is a list of search paths, not a config value to persist)
+              if (key == config::ConfigPath)
+                continue;
+                
+              std::visit([&mergedConfig, &key](auto&& arg) {
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, std::monostate>)
+                {
+                  // Skip monostate
+                }
+                else if constexpr (std::is_same_v<T, bool>)
+                {
+                  mergedConfig[key] = arg;
+                }
+                else if constexpr (std::is_same_v<T, int>)
+                {
+                  mergedConfig[key] = arg;
+                }
+                else if constexpr (std::is_same_v<T, double>)
+                {
+                  mergedConfig[key] = arg;
+                }
+                else if constexpr (std::is_same_v<T, std::string>)
+                {
+                  mergedConfig[key] = arg;
+                }
+                else if constexpr (std::is_same_v<T, Seconds>)
+                {
+                  mergedConfig[key] = arg.count();
+                }
+                else if constexpr (std::is_same_v<T, Milliseconds>)
+                {
+                  mergedConfig[key] = arg.count();
+                }
+                else if constexpr (std::is_same_v<T, StringList>)
+                {
+                  mergedConfig[key] = arg;
+                }
+              }, value);
+            }
+            
+            // Apply updates to merged config
+            std::vector<std::string> updatedKeys;
+            for (auto& [key, value] : updates.items())
+            {
+              // Update the merged config
+              mergedConfig[key] = value;
+              updatedKeys.push_back(key);
+            }
+            
+            // Write to config.json in the config directory
+            // The agent searches for config.json at startup and file monitor will detect changes
+            std::filesystem::path jsonConfigPath = configDir / "config.json";
+            
+            std::ofstream configFile(jsonConfigPath);
+            if (!configFile.is_open())
+            {
+              auto error = Error::make(Error::ErrorCode::INVALID_REQUEST,
+                                       "Failed to open config.json for writing: " + jsonConfigPath.string());
+              throw RestError(error, getPrinter(request->m_accepts, std::nullopt),
+                            rest_sink::status::internal_server_error);
+            }
+            
+            // Write formatted JSON
+            configFile << mergedConfig.dump(2);  // Pretty print with 2-space indent
+            configFile.close();
+            
+            LOG(info) << "Updated configuration written to " << jsonConfigPath.string();
+            LOG(info) << "File monitoring will detect change and trigger warm start";
+            
+            // Build response
+            json response;
+            response["status"] = "ok";
+            response["message"] = "Configuration updated. Agent will warm start shortly.";
+            response["updated"] = updatedKeys;
+            response["configFile"] = jsonConfigPath.string();
+            
+            ResponsePtr resp = make_unique<Response>(
+                rest_sink::status::ok, response.dump(), "application/json");
+            respond(session, std::move(resp), request->m_requestId);
+            return true;
+          }
+          catch (const json::parse_error& e)
+          {
+            auto error = Error::make(Error::ErrorCode::INVALID_REQUEST,
+                                     "Invalid JSON in request body: "s + e.what());
+            throw RestError(error, getPrinter(request->m_accepts, std::nullopt),
+                          rest_sink::status::bad_request);
+          }
+          catch (const RestError&)
+          {
+            throw;  // Re-throw RestError as-is
+          }
+          catch (const std::exception& e)
+          {
+            auto error = Error::make(Error::ErrorCode::INVALID_REQUEST,
+                                     "Failed to update configuration: "s + e.what());
+            throw RestError(error, getPrinter(request->m_accepts, std::nullopt),
+                          rest_sink::status::internal_server_error);
+          }
+        };
+        
+        m_server
+            ->addRouting({boost::beast::http::verb::put, "/config", putHandler})
+            .document("Update agent configuration",
+                      "Updates configuration by writing to config.json, triggering warm start. "
+                      "Requires AllowPut to be enabled. "
+                      "Cannot modify AllowPut or AllowPutFrom if initially disabled.");
+      }
     }
 
     void RestService::createFileRoutings()
