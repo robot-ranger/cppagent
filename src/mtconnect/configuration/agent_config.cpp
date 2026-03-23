@@ -1194,9 +1194,6 @@ namespace mtconnect::configuration {
       auto sinkContract = makeSinkContract();
       sinkContract->m_pipelineContext = m_pipelineContext;
 
-      // Add config file path to options for REST service
-      options[configuration::ConfigFile] = m_configFile.string();
-
       auto sink = m_sinkFactory.make("RestService", "RestService", getAsyncContext(),
                                      std::move(sinkContract), options, config);
       m_agent->addSink(sink);

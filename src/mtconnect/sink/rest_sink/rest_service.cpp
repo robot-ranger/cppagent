@@ -569,15 +569,14 @@ namespace mtconnect {
               return true;
             }
             
-            // Get current config file path to determine directory
-            auto configFilePath = GetOption<string>(m_options, config::ConfigFile);
+            // Get config directory from ConfigPath (first path is the config file's directory)
             std::filesystem::path configDir;
+            auto configPaths = GetOption<StringList>(m_options, config::ConfigPath);
             
-            if (configFilePath && !configFilePath->empty())
+            if (configPaths && !configPaths->empty())
             {
-              // Use the directory of the current config file
-              std::filesystem::path currentConfig(*configFilePath);
-              configDir = currentConfig.parent_path();
+              // Use the first path which is the config file's parent directory
+              configDir = configPaths->front();
             }
             else
             {
@@ -590,7 +589,8 @@ namespace mtconnect {
             for (const auto& [key, value] : m_options)
             {
               // Skip internal/runtime keys that shouldn't be persisted
-              if (key == config::ConfigFile)
+              // (ConfigPath is a list of search paths, not a config value to persist)
+              if (key == config::ConfigPath)
                 continue;
                 
               std::visit([&mergedConfig, &key](auto&& arg) {
